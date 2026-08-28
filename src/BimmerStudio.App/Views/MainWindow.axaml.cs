@@ -51,6 +51,8 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Resolved as a singleton so repeated F1 presses navigate the view model the open
+        // window is actually bound to, rather than a fresh one nothing is showing.
         var helpViewModel = _services.GetRequiredService<HelpViewerViewModel>();
         await helpViewModel.InitialiseAsync();
 

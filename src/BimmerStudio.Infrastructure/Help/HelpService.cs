@@ -1,21 +1,32 @@
 using BimmerStudio.Application.Help;
+using BimmerStudio.Application.Localization;
 
 namespace BimmerStudio.Infrastructure.Help;
 
 /// <summary>
-/// Indexes the authored help set once, then answers lookups, F1 resolution and search from memory.
+/// Indexes the authored help set once per language, then answers lookups, F1 resolution and
+/// search from memory.
 /// </summary>
-public sealed class HelpService(IHelpContentStore store, JobHelpComposer jobHelpComposer) : IHelpService
+/// <remarks>
+/// The index is keyed by language and rebuilt when the selection changes, so help follows the
+/// language like the rest of the application rather than staying on whatever was loaded first.
+/// </remarks>
+public sealed class HelpService(
+    IHelpContentStore store,
+    JobHelpComposer jobHelpComposer,
+    ILocalizer localizer) : IHelpService
 {
     private readonly SemaphoreSlim _loadGate = new(1, 1);
-    private IReadOnlyList<HelpTopic>? _topics;
-    private Dictionary<HelpTopicId, HelpTopic>? _byId;
+
+    private string? _loadedLanguageId;
+    private IReadOnlyList<HelpTopic> _topics = [];
+    private Dictionary<HelpTopicId, HelpTopic> _byId = [];
 
     public async Task<IReadOnlyList<HelpTopic>> GetTableOfContentsAsync(
         CancellationToken cancellationToken = default)
     {
         await EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
-        return _topics!;
+        return _topics;
     }
 
     public async Task<HelpTopic?> GetTopicAsync(
@@ -25,7 +36,7 @@ public sealed class HelpService(IHelpContentStore store, JobHelpComposer jobHelp
         ArgumentNullException.ThrowIfNull(id);
         await EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
 
-        return _byId!.GetValueOrDefault(id);
+        return _byId.GetValueOrDefault(id);
     }
 
     public async Task<HelpTopic?> ResolveAsync(
@@ -49,7 +60,7 @@ public sealed class HelpService(IHelpContentStore store, JobHelpComposer jobHelp
 
         foreach (var candidate in candidates)
         {
-            if (_byId!.TryGetValue(candidate, out var topic))
+            if (_byId.TryGetValue(candidate, out var topic))
             {
                 return topic;
             }
@@ -66,12 +77,12 @@ public sealed class HelpService(IHelpContentStore store, JobHelpComposer jobHelp
 
         if (string.IsNullOrWhiteSpace(query))
         {
-            return _topics!;
+            return _topics;
         }
 
         var terms = query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        return _topics!
+        return _topics
             .Select(topic => (Topic: topic, Score: Score(topic, terms)))
             .Where(match => match.Score > 0)
             .OrderByDescending(match => match.Score)
@@ -111,7 +122,9 @@ public sealed class HelpService(IHelpContentStore store, JobHelpComposer jobHelp
 
     private async Task EnsureLoadedAsync(CancellationToken cancellationToken)
     {
-        if (_topics is not null)
+        var language = localizer.CurrentLanguageId;
+
+        if (string.Equals(_loadedLanguageId, language, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -119,17 +132,18 @@ public sealed class HelpService(IHelpContentStore store, JobHelpComposer jobHelp
         await _loadGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_topics is not null)
+            if (string.Equals(_loadedLanguageId, language, StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
 
-            var loaded = await store.LoadAllAsync(cancellationToken).ConfigureAwait(false);
+            var loaded = await store.LoadAllAsync(language, cancellationToken).ConfigureAwait(false);
 
             _byId = loaded
                 .GroupBy(topic => topic.Id)
                 .ToDictionary(group => group.Key, group => group.First());
-            _topics = [.. loaded.OrderBy(topic => topic.Id.Value, StringComparer.OrdinalIgnoreCase)];
+            _topics = [.. loaded.OrderBy(topic => topic.Title, StringComparer.CurrentCultureIgnoreCase)];
+            _loadedLanguageId = language;
         }
         finally
         {

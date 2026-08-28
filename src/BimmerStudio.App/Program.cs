@@ -4,9 +4,11 @@ using BimmerStudio.App.Localization;
 using BimmerStudio.App.ViewModels;
 using BimmerStudio.Application.Help;
 using BimmerStudio.Application.Localization;
+using BimmerStudio.Application.Modules;
 using BimmerStudio.Domain.Safety;
 using BimmerStudio.Infrastructure.Ediabas;
 using BimmerStudio.Infrastructure.Help;
+using BimmerStudio.Infrastructure.Modules;
 using BimmerStudio.Infrastructure.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -57,6 +59,7 @@ internal static class Program
         services.AddSingleton<JobSafetyClassifier>();
         services.AddSingleton<JobHelpComposer>();
         services.AddSingleton<AppSettingsStore>();
+        services.AddSingleton<IModuleCatalog, ModuleCatalog>();
 
         services.AddSingleton<ILanguagePackProvider>(_ => new InfraLocalization.JsonLanguagePackProvider(
             Assembly.GetExecutingAssembly(),
@@ -78,7 +81,10 @@ internal static class Program
         services.AddSingleton<SetupViewModel>();
         services.AddSingleton<SgbdBrowserViewModel>();
         services.AddSingleton<MainWindowViewModel>();
-        services.AddTransient<HelpViewerViewModel>();
+
+        // One help view model, not one per F1 press: the window is a single instance, so a
+        // transient would navigate an object the open window is no longer bound to.
+        services.AddSingleton<HelpViewerViewModel>();
 
         return services.BuildServiceProvider();
     }

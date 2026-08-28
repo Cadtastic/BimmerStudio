@@ -41,11 +41,12 @@ is a single JSON file dropped into the `languages` folder next to the
 application — no reinstall.
 
 Two kinds of text behave differently. The application's own labels translate
-fully. Text that comes out of the vehicle data — job descriptions, argument
-notes — is German at the source; the English pack translates the common phrases
-and shows the original as a tooltip, and anything unrecognised is shown verbatim
-rather than hidden. Job names never translate, in any language: they are the
-protocol, and they must match what every other tool and forum shows.
+fully, including the help you are reading and the job help composed from an ECU's
+own documentation. Text that comes out of the vehicle data — job descriptions,
+argument notes — is German at the source; the English pack translates the common
+phrases and shows the original as a tooltip, and anything unrecognised is shown
+verbatim rather than hidden. Job names never translate, in any language: they are
+the protocol, and they must match what every other tool and forum shows.
 
 ## Read-only for now
 

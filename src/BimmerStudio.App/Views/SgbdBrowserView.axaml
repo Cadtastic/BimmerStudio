@@ -49,21 +49,43 @@
           </ComboBox.Styles>
           <ComboBox.ItemTemplate>
             <DataTemplate x:DataType="vm:SgbdListItemViewModel">
-              <DockPanel MinWidth="300" ToolTip.Tip="{Binding Tooltip}">
-                <Border DockPanel.Dock="Right" Classes="kindBadge"
-                        Background="{Binding KindBrush}">
-                  <TextBlock Text="{Binding KindLabel}" FontSize="10" Foreground="Black" />
-                </Border>
-                <!-- Stated in the row itself: a tooltip alone would leave the reason
-                     undiscoverable on a disabled item. -->
-                <TextBlock DockPanel.Dock="Right" Text="{Binding UnavailableNote}"
-                           FontSize="10" Opacity="0.7" FontStyle="Italic"
-                           VerticalAlignment="Center" Margin="0,0,8,0"
-                           IsVisible="{Binding UnavailableNote,
-                                       Converter={x:Static ObjectConverters.IsNotNull}}" />
-                <TextBlock Text="{Binding DisplayName}" Classes="mono" FontSize="12"
-                           VerticalAlignment="Center" Margin="0,0,10,0" />
-              </DockPanel>
+              <Panel MinWidth="420">
+                <!-- Section divider: the list is grouped by vehicle area, because raw SGBD
+                     names alone give no clue what part of the car they belong to. -->
+                <TextBlock Text="{Binding CategoryName}" FontWeight="SemiBold" FontSize="11"
+                           Opacity="0.55" Margin="0,6,0,2"
+                           IsVisible="{Binding IsHeader}" />
+
+                <DockPanel ToolTip.Tip="{Binding Tooltip}" IsVisible="{Binding !IsHeader}">
+                  <!-- Kind first: what sort of thing this is, before which one it is. -->
+                  <Border DockPanel.Dock="Left" Classes="kindBadge" Width="58"
+                          Background="{Binding KindBrush}" Margin="0,0,10,0">
+                    <TextBlock Text="{Binding KindLabel}" FontSize="10" Foreground="Black"
+                               HorizontalAlignment="Center" />
+                  </Border>
+
+                  <!-- Stated in the row itself: a tooltip alone would leave the reason
+                       undiscoverable on a disabled item. -->
+                  <TextBlock DockPanel.Dock="Right" Text="{Binding UnavailableNote}"
+                             FontSize="10" Opacity="0.7" FontStyle="Italic"
+                             VerticalAlignment="Center" Margin="10,0,0,0"
+                             IsVisible="{Binding UnavailableNote,
+                                         Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+                  <!-- The raw code stays beside the friendly name: it is what traces, forums
+                       and other tools use, and the friendly name only annotates it. -->
+                  <TextBlock DockPanel.Dock="Right" Text="{Binding DisplayName}" Classes="mono"
+                             FontSize="11" Opacity="0.55" VerticalAlignment="Center"
+                             Margin="10,0,0,0" />
+
+                  <TextBlock Text="{Binding ModuleName}" FontSize="12" VerticalAlignment="Center"
+                             TextTrimming="CharacterEllipsis"
+                             IsVisible="{Binding HasModuleName}" />
+                  <TextBlock Text="{Binding DisplayName}" Classes="mono" FontSize="12"
+                             VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                             IsVisible="{Binding !HasModuleName}" />
+                </DockPanel>
+              </Panel>
             </DataTemplate>
           </ComboBox.ItemTemplate>
         </ComboBox>
@@ -79,7 +101,7 @@
         <TextBlock DockPanel.Dock="Bottom" Margin="0,8,0,0" FontSize="11" Opacity="0.6"
                    Text="{Binding VariantLabel}"
                    IsVisible="{Binding VariantLabel, Converter={x:Static ObjectConverters.IsNotNull}}" />
-        <ListBox ItemsSource="{Binding Jobs}" SelectedItem="{Binding SelectedJob}"
+        <ListBox ItemsSource="{Binding VisibleJobs}" SelectedItem="{Binding SelectedJob}"
                  ScrollViewer.HorizontalScrollBarVisibility="Auto">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:JobListItemViewModel">

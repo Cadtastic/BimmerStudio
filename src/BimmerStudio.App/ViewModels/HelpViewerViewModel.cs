@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using BimmerStudio.Application.Help;
+using BimmerStudio.Application.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -8,9 +9,21 @@ namespace BimmerStudio.App.ViewModels;
 /// <summary>
 /// The help window: table of contents, search, and the current topic.
 /// </summary>
-public sealed partial class HelpViewerViewModel(IHelpService helpService) : ViewModelBase
+public sealed partial class HelpViewerViewModel : ViewModelBase
 {
+    private readonly IHelpService _helpService;
+    private readonly ILocalizer _localizer;
     private readonly Stack<HelpTopic> _back = new();
+
+    public HelpViewerViewModel(IHelpService helpService, ILocalizer localizer)
+    {
+        _helpService = helpService;
+        _localizer = localizer;
+
+        // Help follows the language like everything else: the topic set is rebuilt and the open
+        // page re-resolved, so a switch does not leave the window showing the previous language.
+        localizer.LanguageChanged += (_, _) => _ = ReloadForLanguageChangeAsync();
+    }
 
     public override string HelpTopicId => "overview";
 
@@ -34,9 +47,30 @@ public sealed partial class HelpViewerViewModel(IHelpService helpService) : View
 
     public async Task InitialiseAsync(CancellationToken cancellationToken = default)
     {
-        await RefreshTopicsAsync(null, cancellationToken);
+        await RefreshTopicsAsync(SearchQuery, cancellationToken);
         Current ??= Topics.FirstOrDefault(topic => topic.Id.Value == "overview")
             ?? Topics.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Rebuilds the topic list in the new language and re-resolves the open page by id, so the
+    /// reader stays where they were instead of being sent back to the overview.
+    /// </summary>
+    private async Task ReloadForLanguageChangeAsync()
+    {
+        var openTopicId = Current?.Id;
+
+        await RefreshTopicsAsync(SearchQuery);
+
+        // A composed job topic is not in the authored set; recompose it by leaving it in place.
+        if (openTopicId is not null
+            && await _helpService.GetTopicAsync(openTopicId) is { } translated)
+        {
+            Current = translated;
+        }
+
+        OnPropertyChanged(nameof(CurrentTitle));
+        OnPropertyChanged(nameof(CurrentMarkdown));
     }
 
     /// <summary>Shows a topic, remembering the previous one so Back works.</summary>
@@ -58,8 +92,8 @@ public sealed partial class HelpViewerViewModel(IHelpService helpService) : View
     private async Task RefreshTopicsAsync(string? query, CancellationToken cancellationToken = default)
     {
         var results = string.IsNullOrWhiteSpace(query)
-            ? await helpService.GetTableOfContentsAsync(cancellationToken)
-            : await helpService.SearchAsync(query, cancellationToken);
+            ? await _helpService.GetTableOfContentsAsync(cancellationToken)
+            : await _helpService.SearchAsync(query, cancellationToken);
 
         Topics.Clear();
         foreach (var topic in results)
@@ -67,9 +101,7 @@ public sealed partial class HelpViewerViewModel(IHelpService helpService) : View
             Topics.Add(topic);
         }
 
-        StatusMessage = string.IsNullOrWhiteSpace(query)
-            ? $"{Topics.Count} topics."
-            : $"{Topics.Count} topics matching “{query}”.";
+        StatusMessage = _localizer.Format("Help_TopicCount", Topics.Count);
     }
 
     [RelayCommand(CanExecute = nameof(CanGoBack))]

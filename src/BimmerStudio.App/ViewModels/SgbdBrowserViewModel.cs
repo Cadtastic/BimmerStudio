@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using BimmerStudio.Application.Abstractions;
 using BimmerStudio.Application.Localization;
+using BimmerStudio.Application.Modules;
 using BimmerStudio.Domain.Diagnostics;
 using BimmerStudio.Domain.Safety;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -16,6 +17,7 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
 {
     private readonly JobSafetyClassifier _classifier;
     private readonly ILocalizer _localizer;
+    private readonly IModuleCatalog _moduleCatalog;
 
     private IDiagnosticConnection? _connection;
     private IDiagnosticSession? _session;
@@ -24,10 +26,14 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
     private Task _loadTask = Task.CompletedTask;
     private bool _canReachVehicle;
 
-    public SgbdBrowserViewModel(JobSafetyClassifier classifier, ILocalizer localizer)
+    public SgbdBrowserViewModel(
+        JobSafetyClassifier classifier,
+        ILocalizer localizer,
+        IModuleCatalog moduleCatalog)
     {
         _classifier = classifier;
         _localizer = localizer;
+        _moduleCatalog = moduleCatalog;
 
         // Translated text lives in every row and in the computed labels; one language switch
         // refreshes them all in place.
@@ -36,6 +42,11 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
             foreach (var job in Jobs)
             {
                 job.RefreshTranslations();
+            }
+
+            foreach (var sgbd in AvailableSgbds)
+            {
+                sgbd.RefreshTranslations();
             }
 
             OnPropertyChanged(nameof(BlockedReason));
@@ -49,11 +60,35 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
 
     public ObservableCollection<JobListItemViewModel> Jobs { get; } = [];
 
-    [ObservableProperty]
-    private string? _sgbdFilter;
+    /// <summary>What the list shows: <see cref="Jobs"/> narrowed by the filter text.</summary>
+    public ObservableCollection<JobListItemViewModel> VisibleJobs { get; } = [];
 
     [ObservableProperty]
     private string? _jobFilter;
+
+    /// <summary>
+    /// Matches the protocol name and the translated summary, so "fault" finds FS_LESEN once the
+    /// dictionary has translated its description.
+    /// </summary>
+    partial void OnJobFilterChanged(string? value) => ApplyJobFilter();
+
+    private void ApplyJobFilter()
+    {
+        var filter = JobFilter?.Trim();
+
+        VisibleJobs.Clear();
+        foreach (var job in Jobs)
+        {
+            var matches = string.IsNullOrEmpty(filter)
+                || job.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                || job.Summary?.Contains(filter, StringComparison.CurrentCultureIgnoreCase) == true;
+
+            if (matches)
+            {
+                VisibleJobs.Add(job);
+            }
+        }
+    }
 
     [ObservableProperty]
     private SgbdListItemViewModel? _selectedSgbd;
@@ -125,12 +160,42 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
         Reset();
     }
 
+    /// <summary>
+    /// Builds the picker: rows resolved against the module catalog, sectioned by vehicle area
+    /// with non-selectable headers, sorted by friendly name within each section. Unrecognised
+    /// names gather under "Other" and show their raw code — honest beats guessed.
+    /// </summary>
     public void SetAvailableSgbds(IEnumerable<string> names)
     {
         AvailableSgbds.Clear();
-        foreach (var name in names)
+
+        var items = names
+            .Select(name => new SgbdListItemViewModel(
+                name,
+                _localizer,
+                _canReachVehicle,
+                _moduleCatalog.Resolve(name)))
+            .ToList();
+
+        var byCategory = items
+            .GroupBy(item => item.CategoryKey, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var category in _moduleCatalog.CategoryOrder)
         {
-            AvailableSgbds.Add(new SgbdListItemViewModel(name, _localizer, _canReachVehicle));
+            if (!byCategory.TryGetValue(category, out var section))
+            {
+                continue;
+            }
+
+            AvailableSgbds.Add(SgbdListItemViewModel.Header(category, _localizer));
+
+            foreach (var item in section
+                         .OrderBy(item => item.ModuleName ?? item.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+                         .ThenBy(item => item.DisplayName, StringComparer.OrdinalIgnoreCase))
+            {
+                AvailableSgbds.Add(item);
+            }
         }
     }
 
@@ -161,7 +226,8 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
 
     private async Task LoadSgbdAsync(SgbdListItemViewModel sgbd, CancellationToken cancellationToken)
     {
-        if (_connection is null)
+        // Headers carry no file. They are never selectable, so this is belt and braces.
+        if (_connection is null || sgbd.Identifier is not { } identifier)
         {
             return;
         }
@@ -171,7 +237,7 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
 
         try
         {
-            _session = await _connection.OpenSessionAsync(sgbd.Identifier, cancellationToken);
+            _session = await _connection.OpenSessionAsync(identifier, cancellationToken);
             LoadedVariant = _session.ResolvedVariant;
 
             var jobs = await _session.GetJobsAsync(cancellationToken);
@@ -180,6 +246,7 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
                 Jobs.Add(new JobListItemViewModel(job, _classifier.Classify(job.Name), _localizer));
             }
 
+            ApplyJobFilter();
             StatusMessage = _localizer.Format("Status_JobsIn", Jobs.Count, LoadedVariant);
 
             StartDescriptionPrefetch();
@@ -370,6 +437,7 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
     {
         _prefetchCancellation?.Cancel();
         Jobs.Clear();
+        VisibleJobs.Clear();
         SelectedJob = null;
         LoadedVariant = null;
         Arguments = null;

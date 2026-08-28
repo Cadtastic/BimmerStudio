@@ -31,8 +31,8 @@ you rarely know in advance whether a given 3-series has an MSV70 or an MSD80 —
 
 The trade-off is that a group cannot be inspected offline: identifying the ECU
 means talking to it. **On a simulation connection, group files are therefore shown
-greyed out**, marked "needs a vehicle", rather than offered and then failing.
-Connect through a K+DCAN cable, ENET or an ELM327 adapter and they become
+greyed out**, marked "Requires active connection", rather than offered and then
+failing. Connect through a K+DCAN cable, ENET or an ELM327 adapter and they become
 available.
 
 Of the 80 group files in a typical installation, about six — the stripped-down

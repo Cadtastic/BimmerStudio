@@ -1,5 +1,7 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using BimmerStudio.Application.Help;
+using BimmerStudio.Application.Localization;
 using BimmerStudio.Domain.Diagnostics;
 using BimmerStudio.Domain.Safety;
 
@@ -13,30 +15,17 @@ namespace BimmerStudio.Infrastructure.Help;
 /// and the only description that exists is the German comment the SGBD carries. So the topic is
 /// composed from three sources — what the SGBD says, what the safety classifier concluded, and a
 /// short note for the well-known standard jobs.
+/// <para>
+/// Everything it emits goes through the localizer: its own prose by key, and the SGBD's text
+/// through the same phrase dictionary the main window uses, so a description reads identically
+/// in both places.
+/// </para>
 /// </remarks>
-public sealed class JobHelpComposer(JobSafetyClassifier classifier)
+public sealed partial class JobHelpComposer(JobSafetyClassifier classifier, ILocalizer localizer)
 {
-    /// <summary>
-    /// Notes for the handful of job names that mean the same thing across every SGBD. Everything
-    /// else is described from the SGBD's own comments.
-    /// </summary>
-    private static readonly Dictionary<string, string> StandardJobNotes =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["IDENT"] = "Reads ECU identification: part number, hardware and software versions, and coding index.",
-            ["IDENTIFIKATION"] = "Reads ECU identification. On a group file this is what resolves which variant is fitted.",
-            ["FS_LESEN"] = "Reads the fault memory. Each stored fault code comes back as its own result set.",
-            ["FS_LOESCHEN"] = "Clears the fault memory. This destroys diagnostic evidence, so read the faults first.",
-            ["IS_LESEN"] = "Reads the info (shadow) memory on older ECUs.",
-            ["STATUS_LESEN"] = "UDS: reads measurement values by data identifier (DID).",
-            ["STEUERN"] = "Actuates a function on the ECU. Moves real hardware.",
-            ["STEUERN_IO"] = "UDS: drives an output directly, for actuator testing.",
-            ["STEUERN_ROUTINE"] = "UDS: starts an ECU-internal routine such as an adaptation or reset.",
-            ["INITIALISIERUNG"] = "Opens communication with the ECU. Many SGBDs run this automatically.",
-            ["AIF_LESEN"] = "Reads the workshop info field, which records previous service writes.",
-            ["C_FG_LESEN"] = "Reads the chassis number (VIN) from a coding-capable ECU.",
-            ["SG_CODIEREN"] = "The standard coding job. Writes coding data to the ECU.",
-        };
+    /// <summary>A run of two or more spaces, or any tab: SGBDs use these as column gaps.</summary>
+    [GeneratedRegex(@"[ ]{2,}|\t+")]
+    private static partial Regex ColumnGap();
 
     public HelpTopic Compose(JobDescriptor job, SgbdIdentifier? sgbd)
     {
@@ -49,47 +38,45 @@ public sealed class JobHelpComposer(JobSafetyClassifier classifier)
 
         if (sgbd is not null)
         {
-            markdown.Append("Job of the `").Append(sgbd.BaseName).AppendLine("` ECU description file.").AppendLine();
+            markdown.AppendLine(localizer.Format("JobHelp_OfSgbd", sgbd.BaseName)).AppendLine();
         }
 
-        if (StandardJobNotes.TryGetValue(job.Name, out var note))
+        // Notes for the handful of job names that mean the same thing across every SGBD.
+        // Absent for everything else, which is described from the file's own comments.
+        var noteKey = $"JobNote_{job.Name.ToUpperInvariant()}";
+        var note = localizer[noteKey];
+        if (note != noteKey)
         {
             markdown.AppendLine(note).AppendLine();
         }
 
         AppendSafety(markdown, safety);
 
+        markdown.AppendLine("## " + localizer["JobHelp_WhatFileSays"]).AppendLine();
+
         if (job.Comments.Count > 0)
         {
-            markdown.AppendLine("## What the ECU description file says").AppendLine();
-            foreach (var comment in job.Comments)
+            foreach (var line in job.Comments.SelectMany(Readable))
             {
-                markdown.Append("> ").AppendLine(comment);
+                markdown.Append("> ").AppendLine(line);
             }
-
-            markdown.AppendLine();
         }
         else
         {
-            markdown
-                .AppendLine("## What the ECU description file says")
-                .AppendLine()
-                .AppendLine("This SGBD carries no description for the job. That is common: the")
-                .AppendLine("documentation blocks are optional and many files omit them.")
-                .AppendLine();
+            markdown.AppendLine(localizer["JobHelp_NoDescription"]);
         }
 
-        AppendParameters(markdown, "Arguments", job.Arguments,
-            "This job takes no arguments.");
-        AppendParameters(markdown, "Results", job.Results,
-            "The description file does not list the results this job returns.");
+        markdown.AppendLine();
+
+        AppendParameters(markdown, localizer["JobHelp_Arguments"], job.Arguments,
+            localizer["JobHelp_NoArguments"]);
+        AppendParameters(markdown, localizer["JobHelp_Results"], job.Results,
+            localizer["JobHelp_NoResults"]);
 
         markdown
             .AppendLine("---")
             .AppendLine()
-            .AppendLine("Job names are German protocol identifiers defined by the ECU description")
-            .AppendLine("file, not by BimmerStudio, so they are always shown exactly as the SGBD")
-            .AppendLine("declares them.");
+            .AppendLine(localizer["JobHelp_NamesNote"]);
 
         return new HelpTopic(
             HelpTopicId.Parse($"job/{job.Name}"),
@@ -98,31 +85,27 @@ public sealed class JobHelpComposer(JobSafetyClassifier classifier)
             [job.Name, safety.ToString()]);
     }
 
-    private static void AppendSafety(StringBuilder markdown, JobSafety safety)
+    private void AppendSafety(StringBuilder markdown, JobSafety safety)
     {
-        markdown.Append("**Classification: ").Append(safety).Append("** — ")
-            .AppendLine(safety.Describe()).AppendLine();
+        markdown
+            .AppendLine(localizer.Format(
+                "JobHelp_Classification",
+                localizer[$"Safety_{safety}"],
+                localizer[$"Safety_{safety}_Desc"]))
+            .AppendLine();
 
         if (!safety.IsReadOnly())
         {
-            markdown
-                .AppendLine("BimmerStudio is currently read-only, so this job cannot be run against")
-                .AppendLine("a vehicle. The Run button stays disabled for anything that could change")
-                .AppendLine("the car. It can still be run against a simulation.")
-                .AppendLine();
+            markdown.AppendLine(localizer["JobHelp_ReadOnlyNote"]).AppendLine();
         }
 
         if (safety == JobSafety.Unknown)
         {
-            markdown
-                .AppendLine("The name did not match any known pattern. Unrecognised jobs are treated")
-                .AppendLine("as writes rather than assumed safe, so this may be a perfectly ordinary")
-                .AppendLine("read that simply uses unusual naming — check the description above.")
-                .AppendLine();
+            markdown.AppendLine(localizer["JobHelp_UnknownNote"]).AppendLine();
         }
     }
 
-    private static void AppendParameters(
+    private void AppendParameters(
         StringBuilder markdown,
         string heading,
         IReadOnlyList<JobParameterInfo> parameters,
@@ -136,23 +119,38 @@ public sealed class JobHelpComposer(JobSafetyClassifier classifier)
             return;
         }
 
-        markdown.AppendLine("| Name | Type | Description |")
+        markdown
+            .Append("| ").Append(localizer["JobHelp_ColumnName"])
+            .Append(" | ").Append(localizer["JobHelp_ColumnType"])
+            .Append(" | ").Append(localizer["JobHelp_ColumnDescription"]).AppendLine(" |")
             .AppendLine("|---|---|---|");
 
         foreach (var parameter in parameters)
         {
-            // Comments carry line breaks; a newline inside a Markdown table cell breaks the row.
-            var comment = string.IsNullOrWhiteSpace(parameter.Comment)
-                ? "—"
-                : parameter.Comment.Replace('\n', ' ');
+            // A newline inside a Markdown table cell breaks the row, so the readable lines are
+            // rejoined with a separator that survives the table.
+            var comment = string.Join(" · ", Readable(parameter.Comment));
 
             markdown
                 .Append("| `").Append(parameter.Name).Append("` | ")
                 .Append(parameter.Type ?? "—").Append(" | ")
-                .Append(comment)
+                .Append(comment.Length == 0 ? "—" : comment)
                 .AppendLine(" |");
         }
 
         markdown.AppendLine();
     }
+
+    /// <summary>
+    /// Turns one SGBD comment into readable lines: split on the file's own line breaks and on
+    /// the tab or space runs it uses as column gaps, each piece translated on its own. This is
+    /// the same treatment the browser applies, so the two never disagree.
+    /// </summary>
+    private IEnumerable<string> Readable(string? comment) =>
+        (comment ?? string.Empty)
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(localizer.TranslateData)
+            .SelectMany(line => ColumnGap().Split(line))
+            .Select(part => part.Trim())
+            .Where(part => part.Length > 0);
 }

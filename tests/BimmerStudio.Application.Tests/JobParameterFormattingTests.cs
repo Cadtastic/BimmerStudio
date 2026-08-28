@@ -1,5 +1,6 @@
 using BimmerStudio.App.ViewModels;
 using BimmerStudio.Application.Localization;
+using BimmerStudio.Application.Modules;
 using BimmerStudio.Domain.Diagnostics;
 using BimmerStudio.Infrastructure.Localization;
 
@@ -29,8 +30,8 @@ public sealed class JobParameterFormattingTests
                 ["Sgbd_Group"] = "Group",
                 ["Sgbd_Variant_Desc"] = "One specific ECU.",
                 ["Sgbd_Group_Desc"] = "A family of ECUs.",
-                ["Sgbd_NeedsVehicle_Short"] = "needs a vehicle",
-                ["Sgbd_NeedsVehicle_Desc"] = "Group files identify the fitted ECU by asking the vehicle.",
+                ["Sgbd_RequiresConnection_Short"] = "Requires active connection",
+                ["Sgbd_RequiresConnection_Desc"] = "Group files identify the fitted ECU by asking the vehicle.",
             },
             new Dictionary<string, string>
             {
@@ -111,22 +112,22 @@ public sealed class JobParameterFormattingTests
         string expectedLabel)
     {
         var localizer = await LocalizerAsync();
-        var item = new SgbdListItemViewModel(fileName, localizer, canReachVehicle: true);
+        var item = new SgbdListItemViewModel(fileName, localizer, canReachVehicle: true, ModuleResolution.Unknown);
 
         item.IsGroup.ShouldBe(expectedGroup);
         item.KindLabel.ShouldBe(expectedLabel);
         item.DisplayName.ShouldBe(Path.GetFileNameWithoutExtension(fileName));
-        item.Identifier.Kind.ShouldBe(expectedGroup ? SgbdKind.Group : SgbdKind.Variant);
+        item.Identifier!.Kind.ShouldBe(expectedGroup ? SgbdKind.Group : SgbdKind.Variant);
     }
 
     [Fact]
     public async Task Group_files_are_unselectable_without_a_vehicle_and_say_why()
     {
         var localizer = await LocalizerAsync();
-        var group = new SgbdListItemViewModel("d_motor.grp", localizer, canReachVehicle: false);
+        var group = new SgbdListItemViewModel("d_motor.grp", localizer, canReachVehicle: false, ModuleResolution.Unknown);
 
         group.IsSelectable.ShouldBeFalse();
-        group.UnavailableNote.ShouldBe("needs a vehicle");
+        group.UnavailableNote.ShouldBe("Requires active connection");
         group.Tooltip.ShouldBe("Group files identify the fitted ECU by asking the vehicle.");
     }
 
@@ -134,7 +135,7 @@ public sealed class JobParameterFormattingTests
     public async Task Variants_stay_selectable_without_a_vehicle()
     {
         var localizer = await LocalizerAsync();
-        var variant = new SgbdListItemViewModel("CAS.PRG", localizer, canReachVehicle: false);
+        var variant = new SgbdListItemViewModel("CAS.PRG", localizer, canReachVehicle: false, ModuleResolution.Unknown);
 
         // Most variants can be browsed offline; only group files need the car.
         variant.IsSelectable.ShouldBeTrue();
@@ -146,7 +147,7 @@ public sealed class JobParameterFormattingTests
     public async Task Group_files_become_selectable_once_a_vehicle_can_answer()
     {
         var localizer = await LocalizerAsync();
-        var group = new SgbdListItemViewModel("d_motor.grp", localizer, canReachVehicle: true);
+        var group = new SgbdListItemViewModel("d_motor.grp", localizer, canReachVehicle: true, ModuleResolution.Unknown);
 
         group.IsSelectable.ShouldBeTrue();
         group.UnavailableNote.ShouldBeNull();

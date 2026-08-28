@@ -4,6 +4,10 @@
     <ProjectReference Include="..\BimmerStudio.Application\BimmerStudio.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Modules\module-map.json" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
