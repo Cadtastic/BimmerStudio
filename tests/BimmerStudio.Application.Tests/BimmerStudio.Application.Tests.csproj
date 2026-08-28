@@ -20,5 +20,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\BimmerStudio.Application\BimmerStudio.Application.csproj" />
+    <ProjectReference Include="..\..\src\BimmerStudio.Infrastructure\BimmerStudio.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\BimmerStudio.App\BimmerStudio.App.csproj" />
+    <ProjectReference Include="..\..\src\BimmerStudio.Domain\BimmerStudio.Domain.csproj" />
   </ItemGroup>
 </Project>

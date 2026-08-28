@@ -16,7 +16,7 @@ namespace BimmerStudio.Infrastructure.Ediabas.Transports;
 /// outgoing COM port Windows creates when the device is paired), so no Bluetooth stack is needed.
 /// </para>
 /// </remarks>
-internal sealed class Elm327InterfaceFactory : IEdiabasInterfaceFactory
+public sealed class Elm327InterfaceFactory : IEdiabasInterfaceFactory
 {
     /// <summary>Prefix EdInterfaceObd uses to route a port string to its ELM327 WiFi handler.</summary>
     private const string WifiPortPrefix = "ELM327WIFI:";

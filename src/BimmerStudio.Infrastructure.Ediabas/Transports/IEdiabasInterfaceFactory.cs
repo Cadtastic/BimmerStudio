@@ -8,7 +8,7 @@ namespace BimmerStudio.Infrastructure.Ediabas.Transports;
 /// Builds the EdiabasLib interface for one transport. Adding a transport means adding one
 /// implementation of this and registering it; nothing else in the app changes.
 /// </summary>
-internal interface IEdiabasInterfaceFactory
+public interface IEdiabasInterfaceFactory
 {
     /// <summary>Matches <see cref="ConnectionProfile.TransportId"/>. See <see cref="TransportIds"/>.</summary>
     string TransportId { get; }

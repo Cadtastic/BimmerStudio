@@ -3,7 +3,7 @@ namespace BimmerStudio.Infrastructure.Ediabas.Transports;
 /// <summary>
 /// Setting keys understood by the ENET transport.
 /// </summary>
-internal static class EnetTransportSettings
+public static class EnetTransportSettings
 {
     /// <summary>
     /// Gateway address, or <c>auto</c> to find it by UDP broadcast.

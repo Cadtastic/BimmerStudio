@@ -1,0 +1,118 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BimmerStudio.App.ViewModels"
+             xmlns:help="using:BimmerStudio.App.Help"
+             x:Class="BimmerStudio.App.Views.SgbdBrowserView"
+             x:DataType="vm:SgbdBrowserViewModel">
+
+  <Grid RowDefinitions="Auto,*">
+
+    <!-- ECU selection -->
+    <Border Grid.Row="0" Padding="12" BorderThickness="0,0,0,1" BorderBrush="#2A2A2A">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Content="Load" Margin="8,0,0,0" Classes="accent"
+                Command="{Binding LoadSgbdCommand}" />
+        <TextBlock DockPanel.Dock="Left" Text="ECU" VerticalAlignment="Center"
+                   Margin="0,0,8,0" Opacity="0.7" />
+        <ComboBox ItemsSource="{Binding AvailableSgbds}"
+                  SelectedItem="{Binding SelectedSgbd}"
+                  HorizontalAlignment="Stretch"
+                  MaxDropDownHeight="420"
+                  help:Help.TopicId="sgbd-browser" />
+      </DockPanel>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="320,4,*">
+
+      <!-- Job list -->
+      <DockPanel Grid.Column="0" Margin="12" help:Help.TopicId="sgbd-browser">
+        <TextBox DockPanel.Dock="Top" Watermark="Filter jobs" Text="{Binding JobFilter}"
+                 Margin="0,0,0,8" />
+        <TextBlock DockPanel.Dock="Bottom" Margin="0,8,0,0" FontSize="11" Opacity="0.6"
+                   Text="{Binding LoadedVariant, StringFormat='Variant: {0}'}"
+                   IsVisible="{Binding LoadedVariant, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <ListBox ItemsSource="{Binding Jobs}" SelectedItem="{Binding SelectedJob}">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:JobListItemViewModel">
+              <StackPanel Spacing="2" Margin="0,2">
+                <DockPanel>
+                  <Border DockPanel.Dock="Right" CornerRadius="3" Padding="5,1"
+                          Background="{Binding SafetyBrush}" Opacity="0.85"
+                          ToolTip.Tip="{Binding SafetyDescription}">
+                    <TextBlock Text="{Binding SafetyLabel}" FontSize="10" Foreground="Black" />
+                  </Border>
+                  <TextBlock Text="{Binding Name}" FontFamily="Consolas,Menlo,monospace"
+                             FontSize="12" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+                <TextBlock Text="{Binding Summary}" FontSize="11" Opacity="0.6"
+                           TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding HasSummary}" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+
+      <GridSplitter Grid.Column="1" Background="#2A2A2A" />
+
+      <!-- Execution and results -->
+      <DockPanel Grid.Column="2" Margin="12">
+
+        <StackPanel DockPanel.Dock="Top" Spacing="8" help:Help.TopicId="sgbd-browser">
+          <TextBlock Text="{Binding SelectedJob.Name}" FontSize="18" FontWeight="SemiBold"
+                     FontFamily="Consolas,Menlo,monospace" />
+
+          <TextBox Watermark="Arguments, semicolon separated" Text="{Binding Arguments}"
+                   help:Help.TopicId="sgbd-browser" />
+
+          <!-- Why Run is unavailable, rather than a silently disabled button. -->
+          <Border Background="#3A1F1F" CornerRadius="4" Padding="10"
+                  IsVisible="{Binding BlockedReason, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <TextBlock Text="{Binding BlockedReason}" TextWrapping="Wrap"
+                       Foreground="#F0A0A0" FontSize="12" />
+          </Border>
+
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Content="Run once" Classes="accent" Command="{Binding RunOnceCommand}" />
+            <Button Content="Run continuously" Command="{Binding RunContinuousCommand}"
+                    IsVisible="{Binding !IsStreaming}" />
+            <Button Content="Stop" Command="{Binding StopContinuousCommand}"
+                    IsVisible="{Binding IsStreaming}" />
+            <TextBlock VerticalAlignment="Center" Opacity="0.6" FontSize="12"
+                       Text="{Binding ExecutionCount, StringFormat='{}{0} run(s)'}" />
+            <TextBlock VerticalAlignment="Center" Opacity="0.6" FontSize="12"
+                       Text="{Binding LastDuration}" />
+          </StackPanel>
+        </StackPanel>
+
+        <ScrollViewer Margin="0,12,0,0">
+          <ItemsControl ItemsSource="{Binding Results}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ResultSetViewModel">
+                <Border Background="#161616" CornerRadius="4" Padding="10" Margin="0,0,0,8">
+                  <StackPanel>
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Opacity="0.8"
+                               Margin="0,0,0,6" />
+                    <ItemsControl ItemsSource="{Binding Rows}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ResultRowViewModel">
+                          <Grid ColumnDefinitions="220,*" Margin="0,1">
+                            <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="12"
+                                       Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                            <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" FontSize="12"
+                                                 TextWrapping="Wrap"
+                                                 FontFamily="Consolas,Menlo,monospace" />
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+    </Grid>
+  </Grid>
+</UserControl>

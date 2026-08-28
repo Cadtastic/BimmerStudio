@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:BimmerStudio.App.ViewModels"
+        x:Class="BimmerStudio.App.Views.HelpWindow"
+        x:DataType="vm:HelpViewerViewModel"
+        Title="BimmerStudio Help"
+        Width="900" Height="640"
+        WindowStartupLocation="CenterOwner">
+
+  <Grid ColumnDefinitions="260,*">
+
+    <DockPanel Grid.Column="0" Margin="12">
+      <TextBox DockPanel.Dock="Top" Watermark="Search help" Text="{Binding SearchQuery}"
+               Margin="0,0,0,8" />
+      <TextBlock DockPanel.Dock="Bottom" Text="{Binding StatusMessage}" FontSize="11"
+                 Opacity="0.6" Margin="0,8,0,0" />
+      <ListBox ItemsSource="{Binding Topics}" SelectedItem="{Binding Current}"
+               DisplayMemberBinding="{ReflectionBinding Title}" />
+    </DockPanel>
+
+    <DockPanel Grid.Column="1" Margin="0,12,12,12">
+      <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+        <Button DockPanel.Dock="Left" Content="Back" Command="{Binding GoBackCommand}"
+                Margin="0,0,8,0" />
+        <TextBlock Text="{Binding CurrentTitle}" FontSize="18" FontWeight="SemiBold"
+                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+      </DockPanel>
+
+      <Border Background="#141414" CornerRadius="4" Padding="16">
+        <ScrollViewer>
+          <!-- Filled by MarkdownRenderer from the code-behind: the help subset is rendered by a
+               small in-repo renderer rather than a package tied to an Avalonia major version. -->
+          <ContentControl Name="TopicContent" />
+        </ScrollViewer>
+      </Border>
+    </DockPanel>
+  </Grid>
+</Window>

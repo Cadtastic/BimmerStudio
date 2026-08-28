@@ -15,7 +15,7 @@ public sealed class EdiabasConnectionFactory : IDiagnosticConnectionFactory
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<EdiabasConnectionFactory> _logger;
 
-    internal EdiabasConnectionFactory(
+    public EdiabasConnectionFactory(
         IEnumerable<IEdiabasInterfaceFactory> interfaceFactories,
         ILoggerFactory loggerFactory)
     {

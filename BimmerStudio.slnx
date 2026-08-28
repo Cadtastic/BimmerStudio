@@ -5,6 +5,7 @@
     <Project Path="external/ediabaslib/EdiabasLib/EdiabasLib/EdiabasLib.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/BimmerStudio.App/BimmerStudio.App.csproj" />
     <Project Path="src/BimmerStudio.Application/BimmerStudio.Application.csproj" />
     <Project Path="src/BimmerStudio.Domain/BimmerStudio.Domain.csproj" />
     <Project Path="src/BimmerStudio.Infrastructure.Ediabas/BimmerStudio.Infrastructure.Ediabas.csproj" />

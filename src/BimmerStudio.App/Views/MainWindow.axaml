@@ -1,0 +1,117 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:BimmerStudio.App.ViewModels"
+        xmlns:help="using:BimmerStudio.App.Help"
+        x:Class="BimmerStudio.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="BimmerStudio"
+        Width="1280" Height="800"
+        MinWidth="900" MinHeight="600">
+
+  <Window.Styles>
+    <Style Selector="TextBlock.section">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,12,0,4" />
+      <Setter Property="Opacity" Value="0.75" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="Margin" Value="0,8,0,2" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel>
+
+    <!-- The read-only guarantee is stated permanently rather than hidden in a setting.
+         Two borders rather than a brush converter: the colour difference between "this cannot
+         touch your car" and "this can" should be declared, not computed. -->
+    <Panel DockPanel.Dock="Top">
+      <Border Padding="12,8" Background="#1F3A2E" IsVisible="{Binding !AllowWrites}">
+        <DockPanel>
+          <TextBlock Text="F1 for help" DockPanel.Dock="Right" Opacity="0.8" FontSize="12"
+                     VerticalAlignment="Center" />
+          <TextBlock Text="{Binding ReadOnlyBannerText}" FontWeight="SemiBold"
+                     Foreground="#7EE2A8" TextWrapping="Wrap" />
+        </DockPanel>
+      </Border>
+      <Border Padding="12,8" Background="#3A2E1F" IsVisible="{Binding AllowWrites}">
+        <DockPanel>
+          <TextBlock Text="F1 for help" DockPanel.Dock="Right" Opacity="0.8" FontSize="12"
+                     VerticalAlignment="Center" />
+          <TextBlock Text="{Binding ReadOnlyBannerText}" FontWeight="SemiBold"
+                     Foreground="#E8C07D" TextWrapping="Wrap" />
+        </DockPanel>
+      </Border>
+    </Panel>
+
+    <Border DockPanel.Dock="Bottom" Padding="12,6" Background="#1A1A1A">
+      <DockPanel>
+        <ProgressBar DockPanel.Dock="Right" Width="120" IsIndeterminate="True"
+                     IsVisible="{Binding Browser.IsBusy}" />
+        <TextBlock Text="{Binding Browser.StatusMessage}" Opacity="0.85" TextTrimming="CharacterEllipsis" />
+      </DockPanel>
+    </Border>
+
+    <Grid ColumnDefinitions="340,*">
+
+      <!-- Setup -->
+      <Border Grid.Column="0" Padding="16" BorderThickness="0,0,1,0" BorderBrush="#2A2A2A"
+              help:Help.TopicId="workspace">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Text="Workspace" Classes="section" />
+
+            <TextBlock Text="ECU data folder (the Ecu directory)" Classes="label" />
+            <TextBox Text="{Binding Setup.EcuDataPath}" Watermark="C:\EDIABAS\Ecu"
+                     help:Help.TopicId="workspace" />
+
+            <TextBlock Text="Simulation folder (optional)" Classes="label" />
+            <TextBox Text="{Binding Setup.SimulationPath}" Watermark="Defaults to the ECU folder"
+                     help:Help.TopicId="workspace" />
+
+            <TextBlock Text="{Binding Setup.StatusMessage}" TextWrapping="Wrap"
+                       Margin="0,8,0,0" FontSize="12" Opacity="0.75" />
+
+            <TextBlock Text="Connection" Classes="section" />
+
+            <TextBlock Text="Transport" Classes="label" />
+            <ComboBox ItemsSource="{Binding Setup.TransportOptions}"
+                      SelectedItem="{Binding Setup.SelectedTransport}"
+                      HorizontalAlignment="Stretch"
+                      help:Help.TopicId="connection" />
+
+            <StackPanel IsVisible="{Binding Setup.IsSerialTransport}" help:Help.TopicId="connection">
+              <TextBlock Text="Serial port" Classes="label" />
+              <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Refresh" Margin="6,0,0,0"
+                        Command="{Binding Setup.RefreshSerialPortsCommand}" />
+                <ComboBox ItemsSource="{Binding Setup.SerialPorts}"
+                          SelectedItem="{Binding Setup.SerialPort}"
+                          HorizontalAlignment="Stretch" />
+              </DockPanel>
+            </StackPanel>
+
+            <StackPanel IsVisible="{Binding Setup.IsEnetTransport}" help:Help.TopicId="connection">
+              <TextBlock Text="Gateway address" Classes="label" />
+              <TextBox Text="{Binding Setup.EnetHost}" Watermark="auto" />
+            </StackPanel>
+
+            <Button Content="Connect" Margin="0,16,0,0" HorizontalAlignment="Stretch"
+                    Classes="accent"
+                    Command="{Binding Setup.ConnectCommand}"
+                    help:Help.TopicId="connection" />
+
+            <TextBlock Text="Press F1 on any field for help." Margin="0,16,0,0"
+                       FontSize="11" Opacity="0.55" TextWrapping="Wrap" />
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+
+      <!-- Browser -->
+      <Grid Grid.Column="1" IsEnabled="{Binding IsConnected}" help:Help.TopicId="sgbd-browser">
+        <ContentControl Content="{Binding Browser}" />
+      </Grid>
+    </Grid>
+  </DockPanel>
+</Window>

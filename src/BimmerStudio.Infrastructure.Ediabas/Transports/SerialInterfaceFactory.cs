@@ -13,7 +13,7 @@ namespace BimmerStudio.Infrastructure.Ediabas.Transports;
 /// since 10.9. The trade-off is that D2XX-only tricks are unavailable off Windows, notably the
 /// 5-baud bit-banged slow init that the oldest K-line ECUs need. D-CAN cars are unaffected.
 /// </remarks>
-internal sealed class SerialInterfaceFactory : IEdiabasInterfaceFactory
+public sealed class SerialInterfaceFactory : IEdiabasInterfaceFactory
 {
     public string TransportId => TransportIds.KDCanSerial;
 

@@ -12,7 +12,7 @@ namespace BimmerStudio.Infrastructure.Ediabas.Transports;
 /// aspirational: the transport works today, and what remains for F/G support is the coding-data
 /// layer (PSdZData rather than SP-Daten), not the link.
 /// </remarks>
-internal sealed class EnetInterfaceFactory : IEdiabasInterfaceFactory
+public sealed class EnetInterfaceFactory : IEdiabasInterfaceFactory
 {
     /// <summary>Discovers the gateway by UDP broadcast rather than requiring a fixed address.</summary>
     public const string AutoDetect = "auto";

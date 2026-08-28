@@ -12,7 +12,7 @@ namespace BimmerStudio.Infrastructure.Ediabas.Transports;
 /// cases, UI — runs unchanged with no hardware present. A simulation only answers the requests
 /// its file contains, so it proves plumbing and job handling rather than protocol coverage.
 /// </remarks>
-internal sealed class SimulationInterfaceFactory : IEdiabasInterfaceFactory
+public sealed class SimulationInterfaceFactory : IEdiabasInterfaceFactory
 {
     public string TransportId => TransportIds.Simulation;
 
