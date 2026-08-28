@@ -1,12 +1,16 @@
 using System.Reflection;
 using Avalonia;
+using BimmerStudio.App.Localization;
 using BimmerStudio.App.ViewModels;
 using BimmerStudio.Application.Help;
+using BimmerStudio.Application.Localization;
 using BimmerStudio.Domain.Safety;
 using BimmerStudio.Infrastructure.Ediabas;
 using BimmerStudio.Infrastructure.Help;
+using BimmerStudio.Infrastructure.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using InfraLocalization = BimmerStudio.Infrastructure.Localization;
 
 namespace BimmerStudio.App;
 
@@ -21,7 +25,15 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        Services = BuildServices();
+        var options = StartupOptions.Parse(args);
+        Services = BuildServices(options);
+
+        // The language must be live before any window binds: views bind to the localizer's
+        // indexer at construction, and the saved preference decides what they see first.
+        var localizer = (InfraLocalization.Localizer)Services.GetRequiredService<ILocalizer>();
+        var settings = Services.GetRequiredService<AppSettingsStore>().LoadAsync().GetAwaiter().GetResult();
+        localizer.InitialiseAsync(options.Language ?? settings.LanguageId).GetAwaiter().GetResult();
+        LocalizerHost.Attach(localizer);
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
@@ -32,10 +44,11 @@ internal static class Program
             .WithInterFont()
             .LogToTrace();
 
-    private static ServiceProvider BuildServices()
+    private static ServiceProvider BuildServices(StartupOptions options)
     {
         var services = new ServiceCollection();
 
+        services.AddSingleton(options);
         services.AddLogging(builder => builder.AddSimpleConsole().SetMinimumLevel(LogLevel.Information));
 
         // Diagnostics: interpreter plus the four built-in transports.
@@ -43,6 +56,15 @@ internal static class Program
 
         services.AddSingleton<JobSafetyClassifier>();
         services.AddSingleton<JobHelpComposer>();
+        services.AddSingleton<AppSettingsStore>();
+
+        services.AddSingleton<ILanguagePackProvider>(_ => new InfraLocalization.JsonLanguagePackProvider(
+            Assembly.GetExecutingAssembly(),
+            "BimmerStudio.App.Assets.Languages",
+            // The drop-in folder: a new language is one JSON file here, no rebuild.
+            Path.Combine(AppContext.BaseDirectory, "languages")));
+
+        services.AddSingleton<ILocalizer, InfraLocalization.Localizer>();
 
         services.AddSingleton<IHelpContentStore>(_ => new EmbeddedHelpContentStore(
             Assembly.GetExecutingAssembly(),

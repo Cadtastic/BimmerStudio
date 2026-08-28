@@ -1,19 +1,22 @@
 using System.Collections.ObjectModel;
-using System.IO.Ports;
 using BimmerStudio.Application.Abstractions;
+using BimmerStudio.Application.Localization;
 using BimmerStudio.Domain.Connections;
 using BimmerStudio.Domain.Vehicles;
 using BimmerStudio.Infrastructure.Ediabas.Transports;
+using BimmerStudio.Infrastructure.Settings;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 namespace BimmerStudio.App.ViewModels;
 
 /// <summary>
-/// Chooses where the vehicle data lives and how the car is reached.
+/// Chooses where the vehicle data lives, how the car is reached, and the display language.
 /// </summary>
-public sealed partial class SetupViewModel(IDiagnosticConnectionFactory connectionFactory)
-    : ViewModelBase
+public sealed partial class SetupViewModel(
+    IDiagnosticConnectionFactory connectionFactory,
+    ILocalizer localizer,
+    AppSettingsStore settingsStore) : ViewModelBase
 {
     public override string HelpTopicId => "workspace";
 
@@ -26,6 +29,11 @@ public sealed partial class SetupViewModel(IDiagnosticConnectionFactory connecti
         TransportIds.Enet,
         TransportIds.Elm327,
     ];
+
+    public IReadOnlyList<LanguageChoice> Languages => localizer.AvailableLanguages;
+
+    [ObservableProperty]
+    private LanguageChoice? _selectedLanguage;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
@@ -69,7 +77,33 @@ public sealed partial class SetupViewModel(IDiagnosticConnectionFactory connecti
     public SetupViewModel WithDefaults()
     {
         RefreshSerialPorts();
+        SelectedLanguage = Languages.FirstOrDefault(language =>
+            language.Id.Equals(localizer.CurrentLanguageId, StringComparison.OrdinalIgnoreCase))
+            ?? Languages.FirstOrDefault();
+
         return this;
+    }
+
+    partial void OnSelectedLanguageChanged(LanguageChoice? value)
+    {
+        if (value is null || value.Id.Equals(localizer.CurrentLanguageId, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        _ = ApplyLanguageAsync(value.Id);
+    }
+
+    private async Task ApplyLanguageAsync(string languageId)
+    {
+        await localizer.SetLanguageAsync(languageId);
+
+        // Persisted so the next start opens in the chosen language, before any UI exists.
+        var settings = await settingsStore.LoadAsync();
+        await settingsStore.SaveAsync(settings with { LanguageId = languageId });
+
+        // Re-issue the current status in the new language where it was a canned message.
+        CountDescriptionFiles(EcuDataPath);
     }
 
     [RelayCommand]
@@ -90,7 +124,7 @@ public sealed partial class SetupViewModel(IDiagnosticConnectionFactory connecti
         catch (Exception ex)
         {
             // Enumeration needs platform support that may be absent (missing libudev, say).
-            StatusMessage = $"Could not list serial ports: {ex.Message}";
+            StatusMessage = localizer.Format("Status_SerialError", ex.Message);
         }
 
         SerialPort ??= SerialPorts.FirstOrDefault();
@@ -106,7 +140,7 @@ public sealed partial class SetupViewModel(IDiagnosticConnectionFactory connecti
             GroupCount = 0;
             StatusMessage = string.IsNullOrWhiteSpace(path)
                 ? null
-                : "That folder does not exist.";
+                : localizer["Status_FolderMissing"];
             return;
         }
 
@@ -114,8 +148,8 @@ public sealed partial class SetupViewModel(IDiagnosticConnectionFactory connecti
         GroupCount = Directory.GetFiles(path, "*.grp", SearchOption.TopDirectoryOnly).Length;
 
         StatusMessage = SgbdCount == 0
-            ? "No .prg files here. Point at the Ecu folder of an EDIABAS or SP-Daten install."
-            : $"{SgbdCount} ECU description files and {GroupCount} group files found.";
+            ? localizer["Status_NoFiles"]
+            : localizer.Format("Status_FilesFound", SgbdCount, GroupCount);
     }
 
     private bool CanConnect() =>
@@ -154,7 +188,10 @@ public sealed partial class SetupViewModel(IDiagnosticConnectionFactory connecti
                 .ToList();
 
             IsConnected = true;
-            StatusMessage = $"Connected via {SelectedTransport}.";
+            StatusMessage = localizer.Format("Status_ConnectedVia", SelectedTransport);
+
+            var settings = await settingsStore.LoadAsync(cancellationToken);
+            await settingsStore.SaveAsync(settings with { LastEcuDataPath = EcuDataPath }, cancellationToken);
 
             Connected?.Invoke(connection, !profile.IsHardware, names);
         }

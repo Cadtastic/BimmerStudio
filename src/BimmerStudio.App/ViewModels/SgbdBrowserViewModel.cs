@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using BimmerStudio.Application.Abstractions;
+using BimmerStudio.Application.Localization;
 using BimmerStudio.Domain.Diagnostics;
 using BimmerStudio.Domain.Safety;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -11,11 +12,34 @@ namespace BimmerStudio.App.ViewModels;
 /// <summary>
 /// The Tool32 equivalent: pick an ECU description file, browse its jobs, run one, read results.
 /// </summary>
-public sealed partial class SgbdBrowserViewModel(JobSafetyClassifier classifier) : ViewModelBase
+public sealed partial class SgbdBrowserViewModel : ViewModelBase
 {
+    private readonly JobSafetyClassifier _classifier;
+    private readonly ILocalizer _localizer;
+
     private IDiagnosticConnection? _connection;
     private IDiagnosticSession? _session;
     private CancellationTokenSource? _continuousCancellation;
+
+    public SgbdBrowserViewModel(JobSafetyClassifier classifier, ILocalizer localizer)
+    {
+        _classifier = classifier;
+        _localizer = localizer;
+
+        // Translated text lives in every row and in the computed labels; one language switch
+        // refreshes them all in place.
+        _localizer.LanguageChanged += (_, _) =>
+        {
+            foreach (var job in Jobs)
+            {
+                job.RefreshTranslations();
+            }
+
+            OnPropertyChanged(nameof(BlockedReason));
+            OnPropertyChanged(nameof(VariantLabel));
+            OnPropertyChanged(nameof(RunCountLabel));
+        };
+    }
 
     public override string HelpTopicId => "sgbd-browser";
 
@@ -38,6 +62,7 @@ public sealed partial class SgbdBrowserViewModel(JobSafetyClassifier classifier)
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RunOnceCommand))]
     [NotifyCanExecuteChangedFor(nameof(RunContinuousCommand))]
+    [NotifyCanExecuteChangedFor(nameof(InsertArgumentTemplateCommand))]
     [NotifyPropertyChangedFor(nameof(CanRunSelectedJob))]
     [NotifyPropertyChangedFor(nameof(BlockedReason))]
     private JobListItemViewModel? _selectedJob;
@@ -46,6 +71,7 @@ public sealed partial class SgbdBrowserViewModel(JobSafetyClassifier classifier)
     private string? _arguments;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(VariantLabel))]
     private string? _loadedVariant;
 
     [ObservableProperty]
@@ -63,6 +89,7 @@ public sealed partial class SgbdBrowserViewModel(JobSafetyClassifier classifier)
     private bool _allowWrites;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RunCountLabel))]
     private int _executionCount;
 
     [ObservableProperty]
@@ -72,6 +99,11 @@ public sealed partial class SgbdBrowserViewModel(JobSafetyClassifier classifier)
         SelectedJob is not null
         && !IsStreaming
         && (AllowWrites || SelectedJob.IsReadOnly);
+
+    public string? VariantLabel =>
+        LoadedVariant is null ? null : _localizer.Format("Browser_VariantFormat", LoadedVariant);
+
+    public string RunCountLabel => _localizer.Format("Browser_RunCountFormat", ExecutionCount);
 
     /// <summary>Why Run is disabled, phrased for the user rather than as an error.</summary>
     public string? BlockedReason
@@ -83,9 +115,11 @@ public sealed partial class SgbdBrowserViewModel(JobSafetyClassifier classifier)
                 return null;
             }
 
-            return $"{SelectedJob.Name} is classified as {SelectedJob.SafetyLabel}. "
-                + $"{SelectedJob.SafetyDescription} BimmerStudio is read-only, so it will not run "
-                + "against a vehicle. Press F1 for details.";
+            return _localizer.Format(
+                "Blocked_ReadOnly",
+                SelectedJob.Name,
+                SelectedJob.SafetyLabel,
+                SelectedJob.SafetyDescription);
         }
     }
 
@@ -127,10 +161,10 @@ public sealed partial class SgbdBrowserViewModel(JobSafetyClassifier classifier)
             var jobs = await _session.GetJobsAsync(cancellationToken);
             foreach (var job in jobs)
             {
-                Jobs.Add(new JobListItemViewModel(job, classifier.Classify(job.Name)));
+                Jobs.Add(new JobListItemViewModel(job, _classifier.Classify(job.Name), _localizer));
             }
 
-            StatusMessage = $"{Jobs.Count} jobs in {LoadedVariant}.";
+            StatusMessage = _localizer.Format("Status_JobsIn", Jobs.Count, LoadedVariant);
         }
         catch (VehicleConnectionRequiredException ex)
         {
@@ -179,6 +213,24 @@ public sealed partial class SgbdBrowserViewModel(JobSafetyClassifier classifier)
         }
     }
 
+    /// <summary>
+    /// Pre-fills the argument line with one placeholder per declared argument, in order:
+    /// numbers get zeros, everything else a question mark to replace. EDIABAS arguments are
+    /// positional, so what matters is having the right number of slots.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanInsertArgumentTemplate))]
+    private void InsertArgumentTemplate()
+    {
+        if (SelectedJob is null)
+        {
+            return;
+        }
+
+        Arguments = string.Join(';', SelectedJob.Arguments.Select(argument => argument.Placeholder));
+    }
+
+    private bool CanInsertArgumentTemplate() => SelectedJob?.HasArguments == true;
+
     [RelayCommand(CanExecute = nameof(CanRunSelectedJob))]
     private async Task RunOnceAsync(CancellationToken cancellationToken)
     {
@@ -200,7 +252,7 @@ public sealed partial class SgbdBrowserViewModel(JobSafetyClassifier classifier)
         }
         catch (OperationCanceledException)
         {
-            StatusMessage = "Cancelled.";
+            StatusMessage = _localizer["Status_Cancelled"];
         }
         catch (DiagnosticConnectionException ex)
         {
@@ -249,7 +301,7 @@ public sealed partial class SgbdBrowserViewModel(JobSafetyClassifier classifier)
             IsStreaming = false;
             _continuousCancellation?.Dispose();
             _continuousCancellation = null;
-            StatusMessage = $"Stopped after {ExecutionCount} executions.";
+            StatusMessage = _localizer.Format("Status_StoppedAfter", ExecutionCount);
         }
     }
 
@@ -267,8 +319,8 @@ public sealed partial class SgbdBrowserViewModel(JobSafetyClassifier classifier)
         }
 
         StatusMessage = result.IsSuccess
-            ? $"{result.JobName}: {result.DataSets.Count} data set(s)."
-            : $"{result.JobName} reported JOBSTATUS = {result.JobStatus}.";
+            ? _localizer.Format("Status_DataSets", result.JobName, result.DataSets.Count)
+            : _localizer.Format("Status_JobStatus", result.JobName, result.JobStatus);
     }
 
     private void Reset()

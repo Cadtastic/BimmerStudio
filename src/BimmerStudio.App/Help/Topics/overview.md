@@ -33,6 +33,20 @@ This means the job list you see is read out of the file you loaded, not from a
 list BimmerStudio ships. It also means job names are German protocol identifiers
 defined by BMW, so they are always shown exactly as the SGBD declares them.
 
+## Language
+
+The display language is chosen in the left panel and takes effect immediately.
+Languages are packs: the shipped ones are English and German, and a new language
+is a single JSON file dropped into the `languages` folder next to the
+application — no reinstall.
+
+Two kinds of text behave differently. The application's own labels translate
+fully. Text that comes out of the vehicle data — job descriptions, argument
+notes — is German at the source; the English pack translates the common phrases
+and shows the original as a tooltip, and anything unrecognised is shown verbatim
+rather than hidden. Job names never translate, in any language: they are the
+protocol, and they must match what every other tool and forum shows.
+
 ## Read-only for now
 
 The app currently blocks anything that could change your car. Reading is safe;

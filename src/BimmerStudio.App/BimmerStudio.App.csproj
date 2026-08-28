@@ -31,6 +31,8 @@
   <ItemGroup>
     <!-- Help topics are embedded so F1 works from a single-file publish. -->
     <EmbeddedResource Include="Help\Topics\**\*.md" />
+    <!-- Shipped language packs. Additional packs load from a languages/ folder at runtime. -->
+    <EmbeddedResource Include="Assets\Languages\*.json" />
   </ItemGroup>
 
 </Project>

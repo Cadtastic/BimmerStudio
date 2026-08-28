@@ -39,9 +39,18 @@ documentation plus its safety classification.
 
 ## Arguments
 
-Typed exactly as EDIABAS expects: semicolons between values, no quoting. The
-argument list for the selected job tells you what it wants. Jobs that take no
-arguments ignore the field.
+Typed exactly as EDIABAS expects: **positional values separated by semicolons**,
+no quoting, no names. What goes in each position is defined by the job.
+
+The panel under the argument line shows what the selected job declares: each
+argument's name, its type, and the description the file carries for it. About
+half of all jobs declare arguments; the rest genuinely take none, and the panel
+says so. **Insert template** pre-fills the line with one placeholder per
+argument — zeros for numeric types, `?` where you must supply a value — so the
+slot count is right before you start editing.
+
+The declared results are shown below the run buttons before the first execution,
+so you know what a job returns before running it.
 
 ## Running
 

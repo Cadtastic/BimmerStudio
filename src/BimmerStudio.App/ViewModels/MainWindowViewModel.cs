@@ -1,5 +1,6 @@
 using BimmerStudio.Application.Abstractions;
 using BimmerStudio.Application.Help;
+using BimmerStudio.Application.Localization;
 using BimmerStudio.Domain.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -11,18 +12,22 @@ namespace BimmerStudio.App.ViewModels;
 public sealed partial class MainWindowViewModel : ViewModelBase
 {
     private readonly IHelpService _helpService;
+    private readonly ILocalizer _localizer;
     private IDiagnosticConnection? _connection;
 
     public MainWindowViewModel(
         SetupViewModel setup,
         SgbdBrowserViewModel browser,
-        IHelpService helpService)
+        IHelpService helpService,
+        ILocalizer localizer)
     {
         Setup = setup.WithDefaults();
         Browser = browser;
         _helpService = helpService;
+        _localizer = localizer;
 
         Setup.Connected += OnConnected;
+        _localizer.LanguageChanged += (_, _) => OnPropertyChanged(nameof(ReadOnlyBannerText));
     }
 
     public override string HelpTopicId => "overview";
@@ -42,9 +47,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// Always visible while connected to real hardware. The point is that the guarantee should
     /// never be something the user has to remember or go looking for.
     /// </summary>
-    public string ReadOnlyBannerText => AllowWrites
-        ? "Simulation — write-class jobs are permitted because there is no vehicle to affect."
-        : "Read-only — jobs that could change the vehicle are blocked.";
+    public string ReadOnlyBannerText =>
+        _localizer[AllowWrites ? "Banner_Simulation" : "Banner_ReadOnly"];
 
     private void OnConnected(
         IDiagnosticConnection connection,
@@ -80,6 +84,42 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         string.IsNullOrWhiteSpace(Browser.SelectedSgbd)
             ? null
             : SgbdIdentifier.Parse(Browser.SelectedSgbd);
+
+    /// <summary>
+    /// Replays the startup automation: the same steps a user would click, in order, so demos
+    /// and smoke tests exercise the real code paths rather than a shortcut.
+    /// </summary>
+    public async Task ApplyStartupOptionsAsync(StartupOptions options)
+    {
+        if (options.EcuDataPath is not null)
+        {
+            Setup.EcuDataPath = options.EcuDataPath;
+        }
+
+        if (!options.AutoConnect)
+        {
+            return;
+        }
+
+        await Setup.ConnectCommand.ExecuteAsync(null);
+
+        if (options.LoadSgbd is { } sgbd && IsConnected)
+        {
+            Browser.SelectedSgbd = Browser.AvailableSgbds.FirstOrDefault(name =>
+                Path.GetFileNameWithoutExtension(name).Equals(sgbd, StringComparison.OrdinalIgnoreCase));
+
+            if (Browser.SelectedSgbd is not null)
+            {
+                await Browser.LoadSgbdCommand.ExecuteAsync(null);
+            }
+        }
+
+        if (options.SelectJob is { } jobName)
+        {
+            Browser.SelectedJob = Browser.Jobs.FirstOrDefault(job =>
+                job.Name.Equals(jobName, StringComparison.OrdinalIgnoreCase));
+        }
+    }
 
     public async ValueTask DisposeConnectionAsync()
     {

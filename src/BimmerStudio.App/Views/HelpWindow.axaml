@@ -1,16 +1,17 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:BimmerStudio.App.ViewModels"
+        xmlns:loc="using:BimmerStudio.App.Localization"
         x:Class="BimmerStudio.App.Views.HelpWindow"
         x:DataType="vm:HelpViewerViewModel"
-        Title="BimmerStudio Help"
+        Title="{loc:T Help_Title}"
         Width="900" Height="640"
         WindowStartupLocation="CenterOwner">
 
   <Grid ColumnDefinitions="260,*">
 
     <DockPanel Grid.Column="0" Margin="12">
-      <TextBox DockPanel.Dock="Top" Watermark="Search help" Text="{Binding SearchQuery}"
+      <TextBox DockPanel.Dock="Top" Watermark="{loc:T Help_Search}" Text="{Binding SearchQuery}"
                Margin="0,0,0,8" />
       <TextBlock DockPanel.Dock="Bottom" Text="{Binding StatusMessage}" FontSize="11"
                  Opacity="0.6" Margin="0,8,0,0" />
@@ -20,7 +21,7 @@
 
     <DockPanel Grid.Column="1" Margin="0,12,12,12">
       <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-        <Button DockPanel.Dock="Left" Content="Back" Command="{Binding GoBackCommand}"
+        <Button DockPanel.Dock="Left" Content="{loc:T Help_Back}" Command="{Binding GoBackCommand}"
                 Margin="0,0,8,0" />
         <TextBlock Text="{Binding CurrentTitle}" FontSize="18" FontWeight="SemiBold"
                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />

@@ -22,7 +22,19 @@ public partial class App : Avalonia.Application
         {
             var viewModel = _services.GetRequiredService<MainWindowViewModel>();
 
-            desktop.MainWindow = new MainWindow(_services) { DataContext = viewModel };
+            var mainWindow = new MainWindow(_services) { DataContext = viewModel };
+            desktop.MainWindow = mainWindow;
+
+            var options = _services.GetRequiredService<StartupOptions>();
+            var applied = false;
+            mainWindow.Opened += async (_, _) =>
+            {
+                if (!applied)
+                {
+                    applied = true;
+                    await viewModel.ApplyStartupOptionsAsync(options);
+                }
+            };
 
             // The interpreter holds a serial port or socket, so it must be released on the way out.
             desktop.ShutdownRequested += async (_, _) => await viewModel.DisposeConnectionAsync();

@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:BimmerStudio.App.ViewModels"
         xmlns:help="using:BimmerStudio.App.Help"
+        xmlns:loc="using:BimmerStudio.App.Localization"
         x:Class="BimmerStudio.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="BimmerStudio"
@@ -29,7 +30,7 @@
     <Panel DockPanel.Dock="Top">
       <Border Padding="12,8" Background="#1F3A2E" IsVisible="{Binding !AllowWrites}">
         <DockPanel>
-          <TextBlock Text="F1 for help" DockPanel.Dock="Right" Opacity="0.8" FontSize="12"
+          <TextBlock Text="{loc:T Banner_F1}" DockPanel.Dock="Right" Opacity="0.8" FontSize="12"
                      VerticalAlignment="Center" />
           <TextBlock Text="{Binding ReadOnlyBannerText}" FontWeight="SemiBold"
                      Foreground="#7EE2A8" TextWrapping="Wrap" />
@@ -37,7 +38,7 @@
       </Border>
       <Border Padding="12,8" Background="#3A2E1F" IsVisible="{Binding AllowWrites}">
         <DockPanel>
-          <TextBlock Text="F1 for help" DockPanel.Dock="Right" Opacity="0.8" FontSize="12"
+          <TextBlock Text="{loc:T Banner_F1}" DockPanel.Dock="Right" Opacity="0.8" FontSize="12"
                      VerticalAlignment="Center" />
           <TextBlock Text="{Binding ReadOnlyBannerText}" FontWeight="SemiBold"
                      Foreground="#E8C07D" TextWrapping="Wrap" />
@@ -60,31 +61,32 @@
               help:Help.TopicId="workspace">
         <ScrollViewer>
           <StackPanel>
-            <TextBlock Text="Workspace" Classes="section" />
+            <TextBlock Text="{loc:T Setup_Workspace}" Classes="section" />
 
-            <TextBlock Text="ECU data folder (the Ecu directory)" Classes="label" />
+            <TextBlock Text="{loc:T Setup_EcuFolder}" Classes="label" />
             <TextBox Text="{Binding Setup.EcuDataPath}" Watermark="C:\EDIABAS\Ecu"
                      help:Help.TopicId="workspace" />
 
-            <TextBlock Text="Simulation folder (optional)" Classes="label" />
-            <TextBox Text="{Binding Setup.SimulationPath}" Watermark="Defaults to the ECU folder"
+            <TextBlock Text="{loc:T Setup_SimFolder}" Classes="label" />
+            <TextBox Text="{Binding Setup.SimulationPath}"
+                     Watermark="{loc:T Setup_SimFolder_Watermark}"
                      help:Help.TopicId="workspace" />
 
             <TextBlock Text="{Binding Setup.StatusMessage}" TextWrapping="Wrap"
                        Margin="0,8,0,0" FontSize="12" Opacity="0.75" />
 
-            <TextBlock Text="Connection" Classes="section" />
+            <TextBlock Text="{loc:T Setup_Connection}" Classes="section" />
 
-            <TextBlock Text="Transport" Classes="label" />
+            <TextBlock Text="{loc:T Setup_Transport}" Classes="label" />
             <ComboBox ItemsSource="{Binding Setup.TransportOptions}"
                       SelectedItem="{Binding Setup.SelectedTransport}"
                       HorizontalAlignment="Stretch"
                       help:Help.TopicId="connection" />
 
             <StackPanel IsVisible="{Binding Setup.IsSerialTransport}" help:Help.TopicId="connection">
-              <TextBlock Text="Serial port" Classes="label" />
+              <TextBlock Text="{loc:T Setup_SerialPort}" Classes="label" />
               <DockPanel>
-                <Button DockPanel.Dock="Right" Content="Refresh" Margin="6,0,0,0"
+                <Button DockPanel.Dock="Right" Content="{loc:T Setup_Refresh}" Margin="6,0,0,0"
                         Command="{Binding Setup.RefreshSerialPortsCommand}" />
                 <ComboBox ItemsSource="{Binding Setup.SerialPorts}"
                           SelectedItem="{Binding Setup.SerialPort}"
@@ -93,16 +95,21 @@
             </StackPanel>
 
             <StackPanel IsVisible="{Binding Setup.IsEnetTransport}" help:Help.TopicId="connection">
-              <TextBlock Text="Gateway address" Classes="label" />
+              <TextBlock Text="{loc:T Setup_Gateway}" Classes="label" />
               <TextBox Text="{Binding Setup.EnetHost}" Watermark="auto" />
             </StackPanel>
 
-            <Button Content="Connect" Margin="0,16,0,0" HorizontalAlignment="Stretch"
+            <Button Content="{loc:T Setup_Connect}" Margin="0,16,0,0" HorizontalAlignment="Stretch"
                     Classes="accent"
                     Command="{Binding Setup.ConnectCommand}"
                     help:Help.TopicId="connection" />
 
-            <TextBlock Text="Press F1 on any field for help." Margin="0,16,0,0"
+            <TextBlock Text="{loc:T Setup_Language}" Classes="label" Margin="0,20,0,2" />
+            <ComboBox ItemsSource="{Binding Setup.Languages}"
+                      SelectedItem="{Binding Setup.SelectedLanguage}"
+                      HorizontalAlignment="Stretch" />
+
+            <TextBlock Text="{loc:T Setup_F1Hint}" Margin="0,16,0,0"
                        FontSize="11" Opacity="0.55" TextWrapping="Wrap" />
           </StackPanel>
         </ScrollViewer>
