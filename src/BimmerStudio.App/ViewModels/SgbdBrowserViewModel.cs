@@ -20,6 +20,7 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
     private IDiagnosticConnection? _connection;
     private IDiagnosticSession? _session;
     private CancellationTokenSource? _continuousCancellation;
+    private CancellationTokenSource? _prefetchCancellation;
 
     public SgbdBrowserViewModel(JobSafetyClassifier classifier, ILocalizer localizer)
     {
@@ -37,7 +38,6 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
 
             OnPropertyChanged(nameof(BlockedReason));
             OnPropertyChanged(nameof(VariantLabel));
-            OnPropertyChanged(nameof(RunCountLabel));
         };
     }
 
@@ -46,8 +46,6 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
     public ObservableCollection<string> AvailableSgbds { get; } = [];
 
     public ObservableCollection<JobListItemViewModel> Jobs { get; } = [];
-
-    public ObservableCollection<ResultSetViewModel> Results { get; } = [];
 
     [ObservableProperty]
     private string? _sgbdFilter;
@@ -63,6 +61,7 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(RunOnceCommand))]
     [NotifyCanExecuteChangedFor(nameof(RunContinuousCommand))]
     [NotifyCanExecuteChangedFor(nameof(InsertArgumentTemplateCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ClearResultsCommand))]
     [NotifyPropertyChangedFor(nameof(CanRunSelectedJob))]
     [NotifyPropertyChangedFor(nameof(BlockedReason))]
     private JobListItemViewModel? _selectedJob;
@@ -88,13 +87,6 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(CanRunSelectedJob))]
     private bool _allowWrites;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(RunCountLabel))]
-    private int _executionCount;
-
-    [ObservableProperty]
-    private string? _lastDuration;
-
     public bool CanRunSelectedJob =>
         SelectedJob is not null
         && !IsStreaming
@@ -102,8 +94,6 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
 
     public string? VariantLabel =>
         LoadedVariant is null ? null : _localizer.Format("Browser_VariantFormat", LoadedVariant);
-
-    public string RunCountLabel => _localizer.Format("Browser_RunCountFormat", ExecutionCount);
 
     /// <summary>Why Run is disabled, phrased for the user rather than as an error.</summary>
     public string? BlockedReason
@@ -165,6 +155,8 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
             }
 
             StatusMessage = _localizer.Format("Status_JobsIn", Jobs.Count, LoadedVariant);
+
+            StartDescriptionPrefetch();
         }
         catch (VehicleConnectionRequiredException ex)
         {
@@ -182,42 +174,50 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Fetches the selected job's documentation on demand. Doing this for every job up front
-    /// would cost three interpreter calls each, which is wasted on a list being scanned.
+    /// Fills in every job's documentation in the background after the list appears.
     /// </summary>
-    partial void OnSelectedJobChanged(JobListItemViewModel? value)
+    /// <remarks>
+    /// Documentation costs three interpreter calls per job, but they are answered from the file
+    /// rather than the vehicle: describing a 150-job ECU takes roughly 400 ms in total. Doing it
+    /// eagerly means the whole list carries descriptions instead of only the jobs the user has
+    /// happened to click, which is what makes the list scannable.
+    /// </remarks>
+    private void StartDescriptionPrefetch()
     {
-        if (value is null || _session is null || value.Descriptor.Results.Count > 0)
-        {
-            return;
-        }
+        _prefetchCancellation?.Cancel();
+        _prefetchCancellation?.Dispose();
+        _prefetchCancellation = new CancellationTokenSource();
 
-        _ = DescribeSelectedJobAsync(value);
+        var session = _session;
+        var token = _prefetchCancellation.Token;
+        var jobs = Jobs.ToList();
+
+        _ = Task.Run(async () =>
+        {
+            foreach (var job in jobs)
+            {
+                if (token.IsCancellationRequested || session is null)
+                {
+                    return;
+                }
+
+                try
+                {
+                    var described = await session.DescribeJobAsync(job.Name, token);
+                    job.UpdateDescriptor(described);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+                catch (DiagnosticConnectionException)
+                {
+                    // Documentation is optional; a job that cannot describe keeps its name only.
+                }
+            }
+        }, token);
     }
 
-    private async Task DescribeSelectedJobAsync(JobListItemViewModel item)
-    {
-        if (_session is null)
-        {
-            return;
-        }
-
-        try
-        {
-            var described = await _session.DescribeJobAsync(item.Name);
-            item.UpdateDescriptor(described);
-        }
-        catch (DiagnosticConnectionException)
-        {
-            // Documentation is optional; leaving the name-only descriptor is correct.
-        }
-    }
-
-    /// <summary>
-    /// Pre-fills the argument line with one placeholder per declared argument, in order:
-    /// numbers get zeros, everything else a question mark to replace. EDIABAS arguments are
-    /// positional, so what matters is having the right number of slots.
-    /// </summary>
     [RelayCommand(CanExecute = nameof(CanInsertArgumentTemplate))]
     private void InsertArgumentTemplate()
     {
@@ -226,10 +226,16 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
             return;
         }
 
+        // EDIABAS arguments are positional, so what matters is having the right number of slots.
         Arguments = string.Join(';', SelectedJob.Arguments.Select(argument => argument.Placeholder));
     }
 
     private bool CanInsertArgumentTemplate() => SelectedJob?.HasArguments == true;
+
+    [RelayCommand(CanExecute = nameof(CanClearResults))]
+    private void ClearResults() => SelectedJob?.ClearResults();
+
+    private bool CanClearResults() => SelectedJob is not null;
 
     [RelayCommand(CanExecute = nameof(CanRunSelectedJob))]
     private async Task RunOnceAsync(CancellationToken cancellationToken)
@@ -239,16 +245,18 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
             return;
         }
 
+        var job = SelectedJob;
         IsBusy = true;
+
         try
         {
-            var request = new JobRequest(SelectedJob.Name, NullIfBlank(Arguments));
+            var request = new JobRequest(job.Name, NullIfBlank(Arguments));
             var timestamp = Stopwatch.GetTimestamp();
             var result = await _session.ExecuteJobAsync(request, cancellationToken);
 
-            ShowResult(result);
-            LastDuration = $"{Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds:F0} ms";
-            ExecutionCount++;
+            ShowResult(job, result);
+            job.LastDuration = $"{Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds:F0} ms";
+            job.ExecutionCount++;
         }
         catch (OperationCanceledException)
         {
@@ -272,20 +280,21 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
             return;
         }
 
+        var job = SelectedJob;
         _continuousCancellation = new CancellationTokenSource();
         IsStreaming = true;
 
         try
         {
-            var request = new JobRequest(SelectedJob.Name, NullIfBlank(Arguments));
+            var request = new JobRequest(job.Name, NullIfBlank(Arguments));
 
             await foreach (var result in _session.ExecuteJobContinuousAsync(
                                request,
                                TimeSpan.FromMilliseconds(500),
                                _continuousCancellation.Token))
             {
-                ShowResult(result);
-                ExecutionCount++;
+                ShowResult(job, result);
+                job.ExecutionCount++;
             }
         }
         catch (OperationCanceledException)
@@ -301,22 +310,30 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
             IsStreaming = false;
             _continuousCancellation?.Dispose();
             _continuousCancellation = null;
-            StatusMessage = _localizer.Format("Status_StoppedAfter", ExecutionCount);
+            StatusMessage = _localizer.Format("Status_StoppedAfter", job.ExecutionCount);
         }
     }
 
     [RelayCommand(CanExecute = nameof(IsStreaming))]
     private void StopContinuous() => _continuousCancellation?.Cancel();
 
-    private void ShowResult(JobResult result)
+    /// <summary>
+    /// Attaches results to the job that produced them, not to the browser, so they travel with
+    /// the selection.
+    /// </summary>
+    private void ShowResult(JobListItemViewModel job, JobResult result)
     {
-        Results.Clear();
-        Results.Add(new ResultSetViewModel("System", result.SystemResults));
+        var sets = new List<ResultSetViewModel>
+        {
+            ResultSetViewModel.System(result.SystemResults, _localizer),
+        };
 
         for (var i = 0; i < result.DataSets.Count; i++)
         {
-            Results.Add(new ResultSetViewModel($"Set {i + 1}", result.DataSets[i]));
+            sets.Add(ResultSetViewModel.Data(i + 1, result.DataSets[i], _localizer));
         }
+
+        job.ShowResults(sets);
 
         StatusMessage = result.IsSuccess
             ? _localizer.Format("Status_DataSets", result.JobName, result.DataSets.Count)
@@ -325,12 +342,11 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
 
     private void Reset()
     {
+        _prefetchCancellation?.Cancel();
         Jobs.Clear();
-        Results.Clear();
         SelectedJob = null;
         LoadedVariant = null;
-        ExecutionCount = 0;
-        LastDuration = null;
+        Arguments = null;
     }
 
     private static string? NullIfBlank(string? value) =>

@@ -119,6 +119,17 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             Browser.SelectedJob = Browser.Jobs.FirstOrDefault(job =>
                 job.Name.Equals(jobName, StringComparison.OrdinalIgnoreCase));
         }
+
+        if (options.Run && Browser.RunOnceCommand.CanExecute(null))
+        {
+            await Browser.RunOnceCommand.ExecuteAsync(null);
+        }
+
+        if (options.ThenSelectJob is { } secondJob)
+        {
+            Browser.SelectedJob = Browser.Jobs.FirstOrDefault(job =>
+                job.Name.Equals(secondJob, StringComparison.OrdinalIgnoreCase));
+        }
     }
 
     public async ValueTask DisposeConnectionAsync()

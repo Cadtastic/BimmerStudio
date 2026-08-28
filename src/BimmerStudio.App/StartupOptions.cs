@@ -8,11 +8,18 @@ namespace BimmerStudio.App;
 /// Deliberately limited to actions the user could click themselves, against the simulation
 /// transport only — automation never gets a faster path to hardware than a person has.
 /// </remarks>
+/// <param name="Run">Executes the selected job once, as clicking Run once would.</param>
+/// <param name="ThenSelectJob">
+/// Selects a second job afterwards. Exists to demonstrate that results stay with the job that
+/// produced them rather than following the selection.
+/// </param>
 public sealed record StartupOptions(
     string? EcuDataPath = null,
     bool AutoConnect = false,
     string? LoadSgbd = null,
     string? SelectJob = null,
+    bool Run = false,
+    string? ThenSelectJob = null,
     string? Language = null)
 {
     public static StartupOptions Parse(string[] args)
@@ -27,6 +34,8 @@ public sealed record StartupOptions(
                 "--connect" => options with { AutoConnect = true },
                 "--load" when i + 1 < args.Length => options with { LoadSgbd = args[++i] },
                 "--select-job" when i + 1 < args.Length => options with { SelectJob = args[++i] },
+                "--run" => options with { Run = true },
+                "--then-select" when i + 1 < args.Length => options with { ThenSelectJob = args[++i] },
                 "--lang" when i + 1 < args.Length => options with { Language = args[++i] },
                 _ => options,
             };

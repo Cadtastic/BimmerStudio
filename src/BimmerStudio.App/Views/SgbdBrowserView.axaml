@@ -10,6 +10,11 @@
     <Style Selector="TextBlock.mono">
       <Setter Property="FontFamily" Value="Consolas,Menlo,monospace" />
     </Style>
+    <Style Selector="TextBlock.panelHeading">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Opacity" Value="0.8" />
+    </Style>
   </UserControl.Styles>
 
   <Grid RowDefinitions="Auto,*">
@@ -68,8 +73,19 @@
       <DockPanel Grid.Column="2" Margin="12">
 
         <StackPanel DockPanel.Dock="Top" Spacing="8" help:Help.TopicId="sgbd-browser">
-          <TextBlock Text="{Binding SelectedJob.Name}" FontSize="18" FontWeight="SemiBold"
-                     Classes="mono" />
+
+          <!-- Job identity: the protocol name, then what the ECU file says it does. -->
+          <StackPanel Spacing="2">
+            <TextBlock Text="{Binding SelectedJob.Name}" FontSize="18" FontWeight="SemiBold"
+                       Classes="mono" />
+            <TextBlock Text="{Binding SelectedJob.FullDescription}" FontSize="12" Opacity="0.75"
+                       TextWrapping="Wrap"
+                       ToolTip.Tip="{Binding SelectedJob.OriginalSummary}"
+                       IsVisible="{Binding SelectedJob.HasSummary, FallbackValue=False}" />
+            <TextBlock Text="{loc:T Browser_NoDescription}" FontSize="12" Opacity="0.45"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding !SelectedJob.HasSummary, FallbackValue=False}" />
+          </StackPanel>
 
           <TextBox Watermark="{loc:T Browser_ArgumentsWatermark}" Text="{Binding Arguments}"
                    help:Help.TopicId="sgbd-browser/arguments" />
@@ -84,8 +100,8 @@
                         FontSize="11" Padding="8,3"
                         Command="{Binding InsertArgumentTemplateCommand}"
                         IsVisible="{Binding SelectedJob.HasArguments, FallbackValue=False}" />
-                <TextBlock Text="{loc:T Browser_DeclaredArguments}" FontWeight="SemiBold"
-                           FontSize="12" Opacity="0.8" VerticalAlignment="Center" />
+                <TextBlock Text="{loc:T Browser_DeclaredArguments}" Classes="panelHeading"
+                           VerticalAlignment="Center" />
               </DockPanel>
 
               <TextBlock Text="{loc:T Browser_NoArgumentsDeclared}" FontSize="12" Opacity="0.55"
@@ -97,6 +113,28 @@
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:JobParameterViewModel">
                     <Grid ColumnDefinitions="170,90,*" Margin="0,2">
+                      <TextBlock Grid.Column="0" Text="{Binding Name}" Classes="mono" FontSize="12"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="1" Text="{Binding Type}" FontSize="11" Opacity="0.6" />
+                      <TextBlock Grid.Column="2" Text="{Binding Comment}" FontSize="12" Opacity="0.85"
+                                 TextWrapping="Wrap"
+                                 ToolTip.Tip="{Binding OriginalComment}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+
+          <!-- What the job will return, before it is run. -->
+          <Border Background="#161616" CornerRadius="4" Padding="10"
+                  IsVisible="{Binding SelectedJob.HasDocumentedResults, FallbackValue=False}">
+            <StackPanel Spacing="4">
+              <TextBlock Text="{loc:T Browser_DocumentedResults}" Classes="panelHeading" />
+              <ItemsControl ItemsSource="{Binding SelectedJob.DocumentedResults, FallbackValue={x:Null}}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:JobParameterViewModel">
+                    <Grid ColumnDefinitions="220,90,*" Margin="0,2">
                       <TextBlock Grid.Column="0" Text="{Binding Name}" Classes="mono" FontSize="12"
                                  TextTrimming="CharacterEllipsis" />
                       <TextBlock Grid.Column="1" Text="{Binding Type}" FontSize="11" Opacity="0.6" />
@@ -123,29 +161,42 @@
                     IsVisible="{Binding !IsStreaming}" />
             <Button Content="{loc:T Browser_Stop}" Command="{Binding StopContinuousCommand}"
                     IsVisible="{Binding IsStreaming}" />
+            <Button Content="{loc:T Browser_ClearResults}" Command="{Binding ClearResultsCommand}"
+                    IsVisible="{Binding SelectedJob.HasRun, FallbackValue=False}" />
             <TextBlock VerticalAlignment="Center" Opacity="0.6" FontSize="12"
-                       Text="{Binding RunCountLabel}" />
+                       Text="{Binding SelectedJob.RunCountLabel}" />
             <TextBlock VerticalAlignment="Center" Opacity="0.6" FontSize="12"
-                       Text="{Binding LastDuration}" />
+                       Text="{Binding SelectedJob.LastDuration}" />
           </StackPanel>
         </StackPanel>
 
+        <!-- Results of the selected job. Bound through the selection, so switching jobs shows
+             that job's own output instead of leaving the previous job's on screen. -->
         <ScrollViewer Margin="0,12,0,0">
           <StackPanel>
-            <ItemsControl ItemsSource="{Binding Results}">
+            <TextBlock Text="{loc:T Browser_NoResultsYet}" FontSize="12" Opacity="0.45"
+                       TextWrapping="Wrap" Margin="0,4"
+                       IsVisible="{Binding !SelectedJob.HasRun, FallbackValue=False}" />
+
+            <ItemsControl ItemsSource="{Binding SelectedJob.Results, FallbackValue={x:Null}}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ResultSetViewModel">
                   <Border Background="#161616" CornerRadius="4" Padding="10" Margin="0,0,0,8">
                     <StackPanel>
-                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Opacity="0.8"
-                                 Margin="0,0,0,6" />
+                      <TextBlock Text="{Binding Title}" Classes="panelHeading" Margin="0,0,0,6" />
                       <ItemsControl ItemsSource="{Binding Rows}">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="vm:ResultRowViewModel">
-                            <Grid ColumnDefinitions="220,*" Margin="0,1">
-                              <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="12"
-                                         Opacity="0.7" TextTrimming="CharacterEllipsis" />
-                              <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" FontSize="12"
+                            <Grid ColumnDefinitions="200,220,*" Margin="0,1">
+                              <TextBlock Grid.Column="0" Text="{Binding Name}" Classes="mono"
+                                         FontSize="12" Opacity="0.75"
+                                         TextTrimming="CharacterEllipsis" />
+                              <!-- System results are a fixed set the interpreter produces for
+                                   every job, so each carries a localised explanation. -->
+                              <TextBlock Grid.Column="1" Text="{Binding Description}" FontSize="11"
+                                         Opacity="0.6" TextWrapping="Wrap" Margin="0,0,12,0"
+                                         IsVisible="{Binding HasDescription}" />
+                              <SelectableTextBlock Grid.Column="2" Text="{Binding Value}" FontSize="12"
                                                    TextWrapping="Wrap"
                                                    FontFamily="Consolas,Menlo,monospace" />
                             </Grid>
@@ -157,29 +208,6 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-
-            <!-- Before the first run: what the job will return, from the SGBD's documentation. -->
-            <Border Background="#161616" CornerRadius="4" Padding="10"
-                    IsVisible="{Binding SelectedJob.HasDocumentedResults, FallbackValue=False}">
-              <StackPanel Spacing="4">
-                <TextBlock Text="{loc:T Browser_DocumentedResults}" FontWeight="SemiBold"
-                           FontSize="12" Opacity="0.8" />
-                <ItemsControl ItemsSource="{Binding SelectedJob.DocumentedResults, FallbackValue={x:Null}}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:JobParameterViewModel">
-                      <Grid ColumnDefinitions="220,90,*" Margin="0,2">
-                        <TextBlock Grid.Column="0" Text="{Binding Name}" Classes="mono" FontSize="12"
-                                   TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Column="1" Text="{Binding Type}" FontSize="11" Opacity="0.6" />
-                        <TextBlock Grid.Column="2" Text="{Binding Comment}" FontSize="12" Opacity="0.85"
-                                   TextWrapping="Wrap"
-                                   ToolTip.Tip="{Binding OriginalComment}" />
-                      </Grid>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </StackPanel>
-            </Border>
           </StackPanel>
         </ScrollViewer>
       </DockPanel>
