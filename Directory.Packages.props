@@ -26,8 +26,8 @@
   </ItemGroup>
 
   <ItemGroup Label="Platform">
-    <!-- SGBD text is Windows-1252; the CP1252 codec is not in the base framework off Windows. -->
-    <PackageVersion Include="System.Text.Encoding.CodePages" Version="10.0.0" />
+    <!-- Resolves native serial support for linux-x64/arm64 and osx-x64/arm64.
+         CodePagesEncodingProvider, needed to decode CP1252 SGBD text, is inbox on net10.0. -->
     <PackageVersion Include="System.IO.Ports" Version="10.0.11" />
   </ItemGroup>
 
@@ -37,6 +37,8 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
+    <!-- Lets integration tests skip themselves when no BMW data is present. -->
+    <PackageVersion Include="Xunit.SkippableFact" Version="1.5.23" />
   </ItemGroup>
 
 </Project>

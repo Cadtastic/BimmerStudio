@@ -1,14 +1,27 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>
+      Anti-corruption layer over EdiabasLib. The only project that references the interpreter;
+      no EdiabasNet type is exposed beyond its internals.
+    </Description>
+  </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\BimmerStudio.Application\BimmerStudio.Application.csproj" />
+    <!-- Portable net10.0 target of the fork; see external/ediabaslib feature/cross-platform. -->
     <ProjectReference Include="..\..\external\ediabaslib\EdiabasLib\EdiabasLib\EdiabasLib.csproj" />
   </ItemGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <!-- CodePagesEncodingProvider (for CP1252 SGBD text) is inbox on net10.0. -->
+    <PackageReference Include="System.IO.Ports" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="BimmerStudio.Infrastructure.Ediabas.Tests" />
+  </ItemGroup>
 
 </Project>
