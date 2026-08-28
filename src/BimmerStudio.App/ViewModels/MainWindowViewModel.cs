@@ -88,6 +88,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public async Task ApplyStartupOptionsAsync(StartupOptions options)
     {
+        // The saved workspace first, so anything given on the command line overrides it.
+        await Setup.RestoreAsync();
+
         if (options.EcuDataPath is not null)
         {
             Setup.EcuDataPath = options.EcuDataPath;

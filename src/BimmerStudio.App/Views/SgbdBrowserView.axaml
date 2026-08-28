@@ -49,41 +49,65 @@
           </ComboBox.Styles>
           <ComboBox.ItemTemplate>
             <DataTemplate x:DataType="vm:SgbdListItemViewModel">
-              <Panel MinWidth="420">
+              <Panel MinWidth="440">
                 <!-- Section divider: the list is grouped by vehicle area, because raw SGBD
                      names alone give no clue what part of the car they belong to. -->
-                <TextBlock Text="{Binding CategoryName}" FontWeight="SemiBold" FontSize="11"
-                           Opacity="0.55" Margin="0,6,0,2"
+                <TextBlock Text="{Binding CategoryName}" FontWeight="Bold" FontSize="12"
+                           Foreground="White" Margin="0,8,0,3"
                            IsVisible="{Binding IsHeader}" />
 
-                <DockPanel ToolTip.Tip="{Binding Tooltip}" IsVisible="{Binding !IsHeader}">
+                <DockPanel IsVisible="{Binding !IsHeader}">
+                  <DockPanel.Styles>
+                    <!-- The file name badge, shared by the row and its tooltip. -->
+                    <Style Selector="Border.fileBadge">
+                      <Setter Property="CornerRadius" Value="3" />
+                      <Setter Property="Padding" Value="5,1" />
+                      <Setter Property="Background" Value="#2EA043" />
+                    </Style>
+                    <Style Selector="Border.fileBadge > TextBlock">
+                      <Setter Property="FontFamily" Value="Consolas,Menlo,monospace" />
+                      <Setter Property="FontSize" Value="10" />
+                      <Setter Property="Foreground" Value="Black" />
+                    </Style>
+                  </DockPanel.Styles>
+
+                  <ToolTip.Tip>
+                    <StackPanel Spacing="6" MaxWidth="360">
+                      <Border Classes="fileBadge" HorizontalAlignment="Left">
+                        <TextBlock Text="{Binding DisplayName}" />
+                      </Border>
+                      <TextBlock Text="{Binding Tooltip}" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </ToolTip.Tip>
+
                   <!-- Kind first: what sort of thing this is, before which one it is. -->
                   <Border DockPanel.Dock="Left" Classes="kindBadge" Width="58"
-                          Background="{Binding KindBrush}" Margin="0,0,10,0">
+                          Background="{Binding KindBrush}" Margin="0,0,6,0">
                     <TextBlock Text="{Binding KindLabel}" FontSize="10" Foreground="Black"
                                HorizontalAlignment="Center" />
+                  </Border>
+
+                  <!-- The raw code, next to the kind rather than banished to the far edge: it
+                       is what traces, forums and other tools use, and the friendly name only
+                       annotates it. -->
+                  <Border DockPanel.Dock="Left" Classes="fileBadge" Margin="0,0,10,0"
+                          VerticalAlignment="Center">
+                    <TextBlock Text="{Binding DisplayName}" />
                   </Border>
 
                   <!-- Stated in the row itself: a tooltip alone would leave the reason
                        undiscoverable on a disabled item. -->
                   <TextBlock DockPanel.Dock="Right" Text="{Binding UnavailableNote}"
-                             FontSize="10" Opacity="0.7" FontStyle="Italic"
+                             FontSize="10" FontStyle="Italic" Foreground="#E8C07D"
                              VerticalAlignment="Center" Margin="10,0,0,0"
                              IsVisible="{Binding UnavailableNote,
                                          Converter={x:Static ObjectConverters.IsNotNull}}" />
 
-                  <!-- The raw code stays beside the friendly name: it is what traces, forums
-                       and other tools use, and the friendly name only annotates it. -->
-                  <TextBlock DockPanel.Dock="Right" Text="{Binding DisplayName}" Classes="mono"
-                             FontSize="11" Opacity="0.55" VerticalAlignment="Center"
-                             Margin="10,0,0,0" />
-
                   <TextBlock Text="{Binding ModuleName}" FontSize="12" VerticalAlignment="Center"
                              TextTrimming="CharacterEllipsis"
                              IsVisible="{Binding HasModuleName}" />
-                  <TextBlock Text="{Binding DisplayName}" Classes="mono" FontSize="12"
-                             VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                             IsVisible="{Binding !HasModuleName}" />
+                  <!-- Unrecognised names have no friendly label; the badge alone carries them. -->
+                  <TextBlock Text="" IsVisible="{Binding !HasModuleName}" />
                 </DockPanel>
               </Panel>
             </DataTemplate>

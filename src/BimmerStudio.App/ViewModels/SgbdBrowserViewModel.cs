@@ -190,8 +190,11 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
 
             AvailableSgbds.Add(SgbdListItemViewModel.Header(category, _localizer));
 
+            // Groups first within each section: with a car connected they are the entry point
+            // you usually want, because they identify the fitted variant for you.
             foreach (var item in section
-                         .OrderBy(item => item.ModuleName ?? item.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+                         .OrderByDescending(item => item.IsGroup)
+                         .ThenBy(item => item.ModuleName ?? item.DisplayName, StringComparer.CurrentCultureIgnoreCase)
                          .ThenBy(item => item.DisplayName, StringComparer.OrdinalIgnoreCase))
             {
                 AvailableSgbds.Add(item);

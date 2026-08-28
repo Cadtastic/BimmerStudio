@@ -84,6 +84,44 @@ public sealed partial class SetupViewModel(
         return this;
     }
 
+    /// <summary>
+    /// Puts the previous session's workspace back. Deliberately does not connect: restoring
+    /// settings is convenience, opening a link to a vehicle is a decision.
+    /// </summary>
+    public async Task RestoreAsync(CancellationToken cancellationToken = default)
+    {
+        var settings = await settingsStore.LoadAsync(cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(settings.LastTransportId)
+            && TransportOptions.Contains(settings.LastTransportId))
+        {
+            SelectedTransport = settings.LastTransportId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(settings.LastSerialPort))
+        {
+            // Offered even when absent from the current scan: the cable may simply be unplugged,
+            // and silently dropping the remembered port would look like the setting was lost.
+            if (!SerialPorts.Contains(settings.LastSerialPort))
+            {
+                SerialPorts.Add(settings.LastSerialPort);
+            }
+
+            SerialPort = settings.LastSerialPort;
+        }
+
+        if (!string.IsNullOrWhiteSpace(settings.LastEnetHost))
+        {
+            EnetHost = settings.LastEnetHost;
+        }
+
+        SimulationPath = settings.LastSimulationPath;
+
+        // Last: assigning this counts the description files and writes the status line, so it
+        // should report on the fully restored workspace.
+        EcuDataPath = settings.LastEcuDataPath;
+    }
+
     partial void OnSelectedLanguageChanged(LanguageChoice? value)
     {
         if (value is null || value.Id.Equals(localizer.CurrentLanguageId, StringComparison.OrdinalIgnoreCase))
@@ -190,8 +228,19 @@ public sealed partial class SetupViewModel(
             IsConnected = true;
             StatusMessage = localizer.Format("Status_ConnectedVia", SelectedTransport);
 
+            // Saved on a successful connect rather than on every keystroke: what is worth
+            // restoring is a workspace that actually worked.
             var settings = await settingsStore.LoadAsync(cancellationToken);
-            await settingsStore.SaveAsync(settings with { LastEcuDataPath = EcuDataPath }, cancellationToken);
+            await settingsStore.SaveAsync(
+                settings with
+                {
+                    LastEcuDataPath = EcuDataPath,
+                    LastSimulationPath = SimulationPath,
+                    LastTransportId = SelectedTransport,
+                    LastSerialPort = SerialPort,
+                    LastEnetHost = EnetHost,
+                },
+                cancellationToken);
 
             Connected?.Invoke(connection, !profile.IsHardware, names);
         }

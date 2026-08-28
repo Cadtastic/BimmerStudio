@@ -7,7 +7,8 @@
         x:DataType="vm:MainWindowViewModel"
         Title="BimmerStudio"
         Width="1280" Height="800"
-        MinWidth="900" MinHeight="600">
+        MinWidth="900" MinHeight="600"
+        WindowState="Maximized">
 
   <Window.Styles>
     <Style Selector="TextBlock.section">
