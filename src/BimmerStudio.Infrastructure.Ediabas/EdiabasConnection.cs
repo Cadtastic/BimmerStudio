@@ -19,7 +19,11 @@ namespace BimmerStudio.Infrastructure.Ediabas;
 /// Callers get tasks; the interpreter keeps the deterministic timing that K-line depends on.
 /// </para>
 /// <para>
-/// Parallelism is available by running several connections, not by sharing one.
+/// <b>One connection at a time per process.</b> Running several concurrently is not safe, and not
+/// because of this class: <c>EdiabasNet</c> keeps process-wide static state, including an SGBD
+/// cache that is cleared whenever the last live instance is disposed. Two connections used at
+/// once fail intermittently on unpredictable SGBDs. Serialise interpreter work rather than
+/// pooling instances; scale by doing less work, not by doing it in parallel.
 /// </para>
 /// </remarks>
 internal sealed class EdiabasConnection : IDiagnosticConnection
