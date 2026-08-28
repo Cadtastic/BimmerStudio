@@ -35,6 +35,10 @@ var outputPath = args.Length > 1 && !args[1].StartsWith("--", StringComparison.O
 var onlySgbd = ValueAfter("--sgbd");
 var limit = int.TryParse(ValueAfter("--limit"), out var parsed) ? parsed : int.MaxValue;
 var phrasesPath = ValueAfter("--phrases");
+// Points at a language pack: the phrase inventory is then filtered to lines that pack does
+// not yet translate, which is the list worth working through.
+var dictionaryPath = ValueAfter("--missing");
+var jobCommentsOnly = args.Contains("--job-comments");
 // Group files are compiled SGBDs too; surveying them shows what a group actually exposes.
 var pattern = args.Contains("--groups") ? "*.grp" : "*.prg";
 
@@ -104,12 +108,40 @@ if (outputPath is not null)
 
 if (phrasesPath is not null)
 {
-    await WritePhraseInventoryAsync(report, phrasesPath);
+    await WritePhraseInventoryAsync(report, phrasesPath, LoadDictionaryKeys(dictionaryPath), jobCommentsOnly);
 }
 
 return 0;
 
-static async Task WritePhraseInventoryAsync(List<SgbdReport> report, string path)
+// Existing translations, so the inventory can report only what is still missing.
+static HashSet<string>? LoadDictionaryKeys(string? packPath)
+{
+    if (packPath is null)
+    {
+        return null;
+    }
+
+    using var stream = File.OpenRead(packPath);
+    using var document = JsonDocument.Parse(stream, new JsonDocumentOptions
+    {
+        CommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+    });
+
+    var keys = new HashSet<string>(StringComparer.Ordinal);
+    foreach (var property in document.RootElement.GetProperty("dataPhrases").EnumerateObject())
+    {
+        keys.Add(BimmerStudio.Infrastructure.Localization.TextNormaliser.NormaliseWhitespace(property.Name));
+    }
+
+    return keys;
+}
+
+static async Task WritePhraseInventoryAsync(
+    List<SgbdReport> report,
+    string path,
+    HashSet<string>? alreadyTranslated,
+    bool jobCommentsOnly)
 {
     // Length cap: beyond it, lines are one-off prose (buffer layout essays), which no
     // dictionary should carry — and which a translation memory would never hit anyway.
@@ -141,32 +173,59 @@ static async Task WritePhraseInventoryAsync(List<SgbdReport> report, string path
             Count(comment);
         }
 
+        // Job comments alone when asked: they are what the job list and the job header show,
+        // so they dominate what a user actually reads. Ranking every comment line by frequency
+        // optimises total occurrences instead, which can leave a whole ECU untranslated —
+        // ACC2's descriptions are rare globally but they are the entire screen when it is open.
+        if (jobCommentsOnly)
+        {
+            continue;
+        }
+
         foreach (var parameter in job.Arguments.Concat(job.Results))
         {
             Count(parameter.Comment);
         }
     }
 
-    var ordered = counts
+    var all = counts
         .OrderByDescending(entry => entry.Value)
         .ThenBy(entry => entry.Key, StringComparer.Ordinal)
         .ToList();
 
+    var total = all.Sum(entry => (long)entry.Value);
+
+    var ordered = alreadyTranslated is null
+        ? all
+        : all.Where(entry => !alreadyTranslated.Contains(entry.Key)).ToList();
+
     var lines = ordered.Select(entry => $"{entry.Value}\t{entry.Key}");
     await File.WriteAllLinesAsync(path, lines);
 
-    // The coverage curve is what decides how many phrases are worth translating.
-    var total = ordered.Sum(entry => (long)entry.Value);
-    Console.WriteLine($"\nPhrase inventory: {ordered.Count} distinct lines, {total} occurrences -> {path}");
+    if (alreadyTranslated is not null)
+    {
+        var translated = total - ordered.Sum(entry => (long)entry.Value);
+        Console.WriteLine(
+            $"\nCoverage: {translated * 100.0 / total:F1}% of {total} occurrences already translated");
+        Console.WriteLine($"Untranslated: {ordered.Count} distinct lines -> {path}");
+    }
+    else
+    {
+        Console.WriteLine($"\nPhrase inventory: {ordered.Count} distinct lines, {total} occurrences -> {path}");
+    }
+
+    // The coverage curve is what decides how many phrases are worth working through.
+    var remaining = ordered.Sum(entry => (long)entry.Value);
     foreach (var top in new[] { 100, 250, 500, 1000, 1500, 2000, 3000 })
     {
-        if (top > ordered.Count)
+        if (top > ordered.Count || remaining == 0)
         {
             break;
         }
 
         var covered = ordered.Take(top).Sum(entry => (long)entry.Value);
-        Console.WriteLine($"  top {top,5}: {covered * 100.0 / total:F1}% of occurrences");
+        Console.WriteLine($"  next {top,5}: {covered * 100.0 / remaining:F1}% of what remains"
+            + $" ({covered * 100.0 / total:F1}% of everything)");
     }
 }
 

@@ -177,30 +177,33 @@
                        IsVisible="{Binding !SelectedJob.HasSummary, FallbackValue=False}" />
           </StackPanel>
 
+          <!-- Hidden when the job takes none: an input that cannot be used is an invitation to
+               wonder what belongs in it. -->
           <TextBox Watermark="{loc:T Browser_ArgumentsWatermark}" Text="{Binding Arguments}"
-                   IsVisible="{Binding SelectedJob, Converter={x:Static ObjectConverters.IsNotNull}}"
+                   IsVisible="{Binding SelectedJob.HasArguments, FallbackValue=False}"
                    help:Help.TopicId="sgbd-browser/arguments" />
+
+          <!-- Stated plainly rather than dressed as a panel: there is nothing to read here.
+               The fallback keeps it hidden while no job is selected. -->
+          <TextBlock Text="{loc:T Browser_NoArgumentsDeclared}" FontWeight="SemiBold" FontSize="12"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding !SelectedJob.HasArguments, FallbackValue=False}"
+                     help:Help.TopicId="sgbd-browser/arguments" />
 
           <!-- What the selected job accepts, straight from the SGBD's own declaration. -->
           <Border Background="#161D26" CornerRadius="4" Padding="10"
-                  IsVisible="{Binding SelectedJob, Converter={x:Static ObjectConverters.IsNotNull}}"
+                  IsVisible="{Binding SelectedJob.HasArguments, FallbackValue=False}"
                   help:Help.TopicId="sgbd-browser/arguments">
             <StackPanel Spacing="4">
               <DockPanel>
                 <Button DockPanel.Dock="Right" Content="{loc:T Browser_InsertTemplate}"
                         FontSize="11" Padding="8,3"
-                        Command="{Binding InsertArgumentTemplateCommand}"
-                        IsVisible="{Binding SelectedJob.HasArguments, FallbackValue=False}" />
+                        Command="{Binding InsertArgumentTemplateCommand}" />
                 <TextBlock Text="{loc:T Browser_DeclaredArguments}" Classes="panelHeading"
                            VerticalAlignment="Center" />
               </DockPanel>
 
-              <TextBlock Text="{loc:T Browser_NoArgumentsDeclared}" FontSize="12" Opacity="0.55"
-                         TextWrapping="Wrap"
-                         IsVisible="{Binding !SelectedJob.HasArguments, FallbackValue=False}" />
-
-              <ItemsControl ItemsSource="{Binding SelectedJob.Arguments, FallbackValue={x:Null}}"
-                            IsVisible="{Binding SelectedJob.HasArguments, FallbackValue=False}">
+              <ItemsControl ItemsSource="{Binding SelectedJob.Arguments, FallbackValue={x:Null}}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:JobParameterViewModel">
                     <Grid ColumnDefinitions="170,90,*" Margin="0,3">

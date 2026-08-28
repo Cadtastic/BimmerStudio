@@ -36,3 +36,6 @@ SGDAT/
 *.ipo
 *.IPO
 help/legacy-reference/
+
+## Brainstorming session mockups (local only)
+.superpowers/

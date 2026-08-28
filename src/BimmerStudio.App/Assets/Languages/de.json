@@ -27,7 +27,7 @@
     "Browser_RunContinuously": "Zyklisch ausführen",
     "Browser_Stop": "Stopp",
     "Browser_DeclaredArguments": "Argumente dieses Jobs",
-    "Browser_NoArgumentsDeclared": "Dieser Job deklariert keine Argumente — das Feld oben kann leer bleiben.",
+    "Browser_NoArgumentsDeclared": "Dieser Job deklariert keine Argumente.",
     "Browser_InsertTemplate": "Vorlage einfügen",
     "Browser_Insert": "Einfügen",
     "Browser_DocumentedResults": "Ergebnisse dieses Jobs",
