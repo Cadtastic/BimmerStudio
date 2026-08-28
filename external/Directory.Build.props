@@ -1,0 +1,11 @@
+<Project>
+  <!--
+    Intentionally empty.
+
+    MSBuild walks up from a project directory and stops at the first
+    Directory.Build.props it finds. This file terminates that walk for the
+    vendored ediabaslib submodule, so the repo-root props (single net10.0
+    TargetFramework, nullable, warnings-as-errors) never reach third-party
+    GPL sources and clobber their own multi-targeting.
+  -->
+</Project>

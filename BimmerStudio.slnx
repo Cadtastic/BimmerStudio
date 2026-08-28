@@ -1,0 +1,21 @@
+<Solution>
+  <Folder Name="/external/" />
+  <Folder Name="/external/ediabaslib/" />
+  <Folder Name="/external/ediabaslib/EdiabasLib/">
+    <Project Path="external/ediabaslib/EdiabasLib/EdiabasLib/EdiabasLib.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/BimmerStudio.Application/BimmerStudio.Application.csproj" />
+    <Project Path="src/BimmerStudio.Domain/BimmerStudio.Domain.csproj" />
+    <Project Path="src/BimmerStudio.Infrastructure.Ediabas/BimmerStudio.Infrastructure.Ediabas.csproj" />
+    <Project Path="src/BimmerStudio.Infrastructure/BimmerStudio.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BimmerStudio.Application.Tests/BimmerStudio.Application.Tests.csproj" />
+    <Project Path="tests/BimmerStudio.Domain.Tests/BimmerStudio.Domain.Tests.csproj" />
+    <Project Path="tests/BimmerStudio.Infrastructure.Ediabas.Tests/BimmerStudio.Infrastructure.Ediabas.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/BimmerStudio.SgbdInventory/BimmerStudio.SgbdInventory.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,10 @@
+<Project>
+  <!--
+    Terminates the Directory.Packages.props walk-up for the ediabaslib
+    submodule. It pins its own package versions inline, which is an error
+    under the repo-root central package management.
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+</Project>

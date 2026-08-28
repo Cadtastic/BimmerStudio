@@ -1,0 +1,38 @@
+## Build output
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+*.binlog
+
+## IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userprefs
+
+## Test / coverage
+[Tt]est[Rr]esults/
+coverage*.json
+coverage*.xml
+*.coverage
+
+## OS
+.DS_Store
+Thumbs.db
+
+## BMW data — proprietary, never commit.
+## Workspaces point at a local SP-Daten/EDIABAS installation instead.
+Ecu/
+DATEN/
+SGDAT/
+*.prg
+*.PRG
+*.grp
+*.GRP
+*.ipo
+*.IPO
+help/legacy-reference/

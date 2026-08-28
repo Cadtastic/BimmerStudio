@@ -1,0 +1,34 @@
+<Project>
+
+  <!--
+    ediabaslib's own Directory.Build.props explicitly imports
+    $(SolutionDir)Directory.Build.props, so this file IS pulled into the
+    vendored GPL sources during a solution build. Everything opinionated
+    below is therefore gated on IsVendoredProject: third-party code keeps
+    its own multi-targeting, nullability and warning level.
+  -->
+  <PropertyGroup>
+    <_VendorRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)external'))</_VendorRoot>
+    <IsVendoredProject Condition="$(MSBuildProjectDirectory.StartsWith('$(_VendorRoot)'))">true</IsVendoredProject>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsVendoredProject)' != 'true'">
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Shared metadata">
+    <Product>BimmerStudio</Product>
+    <Company>Cadtastic</Company>
+    <Authors>Cadtastic</Authors>
+    <Copyright>Copyright (c) 2026 Cadtastic</Copyright>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/Cadtastic/BimmerStudio</RepositoryUrl>
+  </PropertyGroup>
+
+</Project>

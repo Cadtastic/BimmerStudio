@@ -1,0 +1,3 @@
+[submodule "external/ediabaslib"]
+	path = external/ediabaslib
+	url = https://github.com/Cadtastic/ediabaslib.git
