@@ -39,3 +39,6 @@ help/legacy-reference/
 
 ## Brainstorming session mockups (local only)
 .superpowers/
+
+## Git worktrees (local only)
+.worktrees/
