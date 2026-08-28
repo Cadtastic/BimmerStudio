@@ -59,14 +59,66 @@ public sealed class ShippedLanguagePackTests
     }
 
     [Fact]
-    public async Task English_ships_a_data_phrase_dictionary()
+    public async Task English_ships_the_corpus_derived_phrase_dictionary()
     {
         var packs = await CreateProvider().LoadAllAsync();
         var english = packs.Single(pack => pack.Id == "en");
 
-        // The number is arbitrary; the point is that the mechanism ships seeded, not empty.
-        english.DataPhrases.Count.ShouldBeGreaterThan(20);
+        // Machine-assisted from the frequency inventory; a sharp drop here means the
+        // dictionary was accidentally truncated.
+        english.DataPhrases.Count.ShouldBeGreaterThan(350);
         english.DataPhrases.ShouldContainKey("Standard Codierjob");
+        english.DataPhrases.ShouldContainKey("Hex-Antwort von SG");
+        english.DataPhrases.ShouldContainKey("OKAY, wenn fehlerfrei");
+    }
+
+    [Fact]
+    public void Phrase_keys_are_unique_after_whitespace_normalisation()
+    {
+        // Dictionary deserialisation silently keeps the last duplicate, so a collision in the
+        // source file loses a translation without any error. Enumerate the raw JSON instead.
+        using var stream = typeof(App.ViewLocator).Assembly.GetManifestResourceStream(
+            "BimmerStudio.App.Assets.Languages.en.json");
+        stream.ShouldNotBeNull();
+
+        using var document = System.Text.Json.JsonDocument.Parse(
+            stream,
+            new System.Text.Json.JsonDocumentOptions
+            {
+                CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                AllowTrailingCommas = true,
+            });
+
+        var seen = new Dictionary<string, string>(StringComparer.Ordinal);
+        var duplicates = new List<string>();
+
+        foreach (var property in document.RootElement.GetProperty("dataPhrases").EnumerateObject())
+        {
+            var normalised = TextNormaliser.NormaliseWhitespace(property.Name);
+            if (!seen.TryAdd(normalised, property.Name))
+            {
+                duplicates.Add($"'{property.Name}' collides with '{seen[normalised]}'");
+            }
+        }
+
+        duplicates.ShouldBeEmpty(string.Join("; ", duplicates));
+    }
+
+    [Fact]
+    public async Task Phrase_dictionary_never_translates_protocol_identifiers()
+    {
+        var packs = await CreateProvider().LoadAllAsync();
+        var english = packs.Single(pack => pack.Id == "en");
+
+        // A key that is a bare ALL_CAPS identifier would translate a job or result NAME, which
+        // must render verbatim everywhere.
+        var identifierLike = english.DataPhrases.Keys
+            .Where(key => key.Length > 2
+                && key.All(c => char.IsAsciiLetterUpper(c) || c == '_' || char.IsAsciiDigit(c))
+                && key.Contains('_'))
+            .ToList();
+
+        identifierLike.ShouldBeEmpty(string.Join(", ", identifierLike));
     }
 
     [Fact]

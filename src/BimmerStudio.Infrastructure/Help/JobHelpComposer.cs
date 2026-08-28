@@ -141,10 +141,15 @@ public sealed class JobHelpComposer(JobSafetyClassifier classifier)
 
         foreach (var parameter in parameters)
         {
+            // Comments carry line breaks; a newline inside a Markdown table cell breaks the row.
+            var comment = string.IsNullOrWhiteSpace(parameter.Comment)
+                ? "—"
+                : parameter.Comment.Replace('\n', ' ');
+
             markdown
                 .Append("| `").Append(parameter.Name).Append("` | ")
                 .Append(parameter.Type ?? "—").Append(" | ")
-                .Append(string.IsNullOrWhiteSpace(parameter.Comment) ? "—" : parameter.Comment)
+                .Append(comment)
                 .AppendLine(" |");
         }
 

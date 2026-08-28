@@ -12,6 +12,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 // argument and result documentation the description files actually carry.
 //
 //   BimmerStudio.SgbdInventory <ecuPath> [outputJson] [--sgbd NAME] [--limit N]
+//                              [--phrases out.tsv]
+//
+// --phrases writes every distinct comment line with its occurrence count, frequency-sorted,
+// as the raw material for a language pack's data-phrase dictionary. Lines are the unit
+// because the same line recurs across thousands of jobs while full comments vary.
 
 if (args.Length == 0)
 {
@@ -29,6 +34,7 @@ if (!Directory.Exists(ecuPath))
 var outputPath = args.Length > 1 && !args[1].StartsWith("--", StringComparison.Ordinal) ? args[1] : null;
 var onlySgbd = ValueAfter("--sgbd");
 var limit = int.TryParse(ValueAfter("--limit"), out var parsed) ? parsed : int.MaxValue;
+var phrasesPath = ValueAfter("--phrases");
 
 var classifier = new JobSafetyClassifier();
 var factory = new EdiabasConnectionFactory([new SimulationInterfaceFactory()], NullLoggerFactory.Instance);
@@ -94,7 +100,73 @@ if (outputPath is not null)
     Console.WriteLine($"\nWrote {outputPath}");
 }
 
+if (phrasesPath is not null)
+{
+    await WritePhraseInventoryAsync(report, phrasesPath);
+}
+
 return 0;
+
+static async Task WritePhraseInventoryAsync(List<SgbdReport> report, string path)
+{
+    // Length cap: beyond it, lines are one-off prose (buffer layout essays), which no
+    // dictionary should carry — and which a translation memory would never hit anyway.
+    const int maxLength = 100;
+    const int minLength = 3;
+
+    var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+
+    void Count(string? text)
+    {
+        foreach (var line in (text ?? string.Empty).Split('\n'))
+        {
+            var normalised = BimmerStudio.Infrastructure.Localization.TextNormaliser
+                .NormaliseWhitespace(line);
+
+            if (normalised.Length is < minLength or > maxLength)
+            {
+                continue;
+            }
+
+            counts[normalised] = counts.GetValueOrDefault(normalised) + 1;
+        }
+    }
+
+    foreach (var job in report.SelectMany(sgbd => sgbd.Jobs))
+    {
+        foreach (var comment in job.Comments)
+        {
+            Count(comment);
+        }
+
+        foreach (var parameter in job.Arguments.Concat(job.Results))
+        {
+            Count(parameter.Comment);
+        }
+    }
+
+    var ordered = counts
+        .OrderByDescending(entry => entry.Value)
+        .ThenBy(entry => entry.Key, StringComparer.Ordinal)
+        .ToList();
+
+    var lines = ordered.Select(entry => $"{entry.Value}\t{entry.Key}");
+    await File.WriteAllLinesAsync(path, lines);
+
+    // The coverage curve is what decides how many phrases are worth translating.
+    var total = ordered.Sum(entry => (long)entry.Value);
+    Console.WriteLine($"\nPhrase inventory: {ordered.Count} distinct lines, {total} occurrences -> {path}");
+    foreach (var top in new[] { 100, 250, 500, 1000, 1500, 2000, 3000 })
+    {
+        if (top > ordered.Count)
+        {
+            break;
+        }
+
+        var covered = ordered.Take(top).Sum(entry => (long)entry.Value);
+        Console.WriteLine($"  top {top,5}: {covered * 100.0 / total:F1}% of occurrences");
+    }
+}
 
 static ParameterReport ToParameter(JobParameterInfo info) =>
     new(info.Name, info.Type, info.Comment);

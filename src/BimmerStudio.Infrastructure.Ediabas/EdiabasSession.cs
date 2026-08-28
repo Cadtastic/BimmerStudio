@@ -230,7 +230,9 @@ internal sealed class EdiabasSession(
                 continue;
             }
 
-            var comment = string.Join(' ', OrderedByIndex(set, commentPrefix));
+            // Joined with newlines rather than spaces: comment lines are the unit that recurs
+            // across SGBDs, and the phrase translation matches line by line.
+            var comment = string.Join('\n', OrderedByIndex(set, commentPrefix));
             parameters.Add(new JobParameterInfo(
                 name,
                 set.TextOrNull(typeKey),

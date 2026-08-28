@@ -13,14 +13,26 @@ public sealed class JobParameterViewModel(JobParameterInfo info, ILocalizer loca
 
     public string Type => info.Type ?? "—";
 
+    /// <summary>
+    /// The description with each line translated separately. Lines are the unit that recurs
+    /// across SGBDs ("oder alternativ" appears a thousand times as a line of longer comments),
+    /// so per-line lookup is what makes the dictionary bite on multi-line text.
+    /// </summary>
     public string? Comment =>
-        string.IsNullOrWhiteSpace(info.Comment) ? null : localizer.TranslateData(info.Comment);
+        string.IsNullOrWhiteSpace(info.Comment)
+            ? null
+            : string.Join(' ', Lines().Select(localizer.TranslateData));
 
     public bool HasComment => !string.IsNullOrWhiteSpace(info.Comment);
 
-    /// <summary>Shown as the tooltip whenever the display text is a translation.</summary>
+    /// <summary>Shown as the tooltip whenever any line of the display text is a translation.</summary>
     public string? OriginalComment =>
-        HasComment && localizer.HasDataTranslation(info.Comment) ? info.Comment : null;
+        HasComment && Lines().Any(localizer.HasDataTranslation)
+            ? info.Comment!.Replace('\n', ' ')
+            : null;
+
+    private IEnumerable<string> Lines() =>
+        (info.Comment ?? string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
     /// <summary>
     /// A value to pre-fill the argument line with, chosen by declared type. Honest placeholders:

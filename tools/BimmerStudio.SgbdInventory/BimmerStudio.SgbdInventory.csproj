@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\BimmerStudio.Infrastructure.Ediabas\BimmerStudio.Infrastructure.Ediabas.csproj" />
+    <ProjectReference Include="..\..\src\BimmerStudio.Infrastructure\BimmerStudio.Infrastructure.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
