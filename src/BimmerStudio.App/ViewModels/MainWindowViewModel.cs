@@ -80,10 +80,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         return _helpService.ResolveAsync(context, cancellationToken);
     }
 
-    private SgbdIdentifier? ParseSelectedSgbd() =>
-        string.IsNullOrWhiteSpace(Browser.SelectedSgbd)
-            ? null
-            : SgbdIdentifier.Parse(Browser.SelectedSgbd);
+    private SgbdIdentifier? ParseSelectedSgbd() => Browser.SelectedSgbd?.Identifier;
 
     /// <summary>
     /// Replays the startup automation: the same steps a user would click, in order, so demos
@@ -105,13 +102,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         if (options.LoadSgbd is { } sgbd && IsConnected)
         {
-            Browser.SelectedSgbd = Browser.AvailableSgbds.FirstOrDefault(name =>
-                Path.GetFileNameWithoutExtension(name).Equals(sgbd, StringComparison.OrdinalIgnoreCase));
+            // Selecting is what loads: the browser opens the session on selection change.
+            Browser.SelectedSgbd = Browser.AvailableSgbds.FirstOrDefault(item =>
+                item.DisplayName.Equals(sgbd, StringComparison.OrdinalIgnoreCase));
 
-            if (Browser.SelectedSgbd is not null)
-            {
-                await Browser.LoadSgbdCommand.ExecuteAsync(null);
-            }
+            await Browser.WaitForLoadAsync();
         }
 
         if (options.SelectJob is { } jobName)

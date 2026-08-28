@@ -21,6 +21,7 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
     private IDiagnosticSession? _session;
     private CancellationTokenSource? _continuousCancellation;
     private CancellationTokenSource? _prefetchCancellation;
+    private Task _loadTask = Task.CompletedTask;
 
     public SgbdBrowserViewModel(JobSafetyClassifier classifier, ILocalizer localizer)
     {
@@ -43,7 +44,7 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
 
     public override string HelpTopicId => "sgbd-browser";
 
-    public ObservableCollection<string> AvailableSgbds { get; } = [];
+    public ObservableCollection<SgbdListItemViewModel> AvailableSgbds { get; } = [];
 
     public ObservableCollection<JobListItemViewModel> Jobs { get; } = [];
 
@@ -54,8 +55,7 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
     private string? _jobFilter;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(LoadSgbdCommand))]
-    private string? _selectedSgbd;
+    private SgbdListItemViewModel? _selectedSgbd;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RunOnceCommand))]
@@ -125,16 +125,32 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
         AvailableSgbds.Clear();
         foreach (var name in names)
         {
-            AvailableSgbds.Add(name);
+            AvailableSgbds.Add(new SgbdListItemViewModel(name, _localizer));
         }
     }
 
-    private bool CanLoadSgbd() => !string.IsNullOrWhiteSpace(SelectedSgbd) && _connection is not null;
-
-    [RelayCommand(CanExecute = nameof(CanLoadSgbd))]
-    private async Task LoadSgbdAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Loading is what selecting an ECU means, so it happens on selection rather than behind a
+    /// second button. Reading an ECU description file cannot change the vehicle, so there is
+    /// nothing here worth making the user confirm.
+    /// </summary>
+    partial void OnSelectedSgbdChanged(SgbdListItemViewModel? value)
     {
-        if (_connection is null || string.IsNullOrWhiteSpace(SelectedSgbd))
+        if (value is not null)
+        {
+            _loadTask = LoadSgbdAsync(value, CancellationToken.None);
+        }
+    }
+
+    /// <summary>
+    /// Awaits the load started by the last selection change. Selection is a property set, so it
+    /// cannot be awaited directly; startup automation and tests need somewhere to wait.
+    /// </summary>
+    public Task WaitForLoadAsync() => _loadTask;
+
+    private async Task LoadSgbdAsync(SgbdListItemViewModel sgbd, CancellationToken cancellationToken)
+    {
+        if (_connection is null)
         {
             return;
         }
@@ -144,8 +160,7 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
 
         try
         {
-            var identifier = SgbdIdentifier.Parse(SelectedSgbd);
-            _session = await _connection.OpenSessionAsync(identifier, cancellationToken);
+            _session = await _connection.OpenSessionAsync(sgbd.Identifier, cancellationToken);
             LoadedVariant = _session.ResolvedVariant;
 
             var jobs = await _session.GetJobsAsync(cancellationToken);

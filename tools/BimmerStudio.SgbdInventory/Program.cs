@@ -35,6 +35,8 @@ var outputPath = args.Length > 1 && !args[1].StartsWith("--", StringComparison.O
 var onlySgbd = ValueAfter("--sgbd");
 var limit = int.TryParse(ValueAfter("--limit"), out var parsed) ? parsed : int.MaxValue;
 var phrasesPath = ValueAfter("--phrases");
+// Group files are compiled SGBDs too; surveying them shows what a group actually exposes.
+var pattern = args.Contains("--groups") ? "*.grp" : "*.prg";
 
 var classifier = new JobSafetyClassifier();
 var factory = new EdiabasConnectionFactory([new SimulationInterfaceFactory()], NullLoggerFactory.Instance);
@@ -48,7 +50,7 @@ var profile = ConnectionProfile.Create("inventory", TransportIds.Simulation,
 
 await using var connection = await factory.ConnectAsync(profile, workspace);
 
-var files = Directory.GetFiles(ecuPath, "*.prg", SearchOption.TopDirectoryOnly)
+var files = Directory.GetFiles(ecuPath, pattern, SearchOption.TopDirectoryOnly)
     .Where(file => onlySgbd is null
         || Path.GetFileNameWithoutExtension(file).Equals(onlySgbd, StringComparison.OrdinalIgnoreCase))
     .Take(limit)

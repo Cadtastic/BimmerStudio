@@ -35,6 +35,12 @@
     "Browser_RunCountFormat": "{0} Ausführung(en)",
     "Browser_OriginalText": "Originaltext aus der Steuergerätebeschreibung",
     "Browser_ClearResults": "Leeren",
+    "Browser_SelectEcuPrompt": "Oben ein Steuergerät wählen, um dessen Jobs zu sehen.",
+
+    "Sgbd_Variant": "Variante",
+    "Sgbd_Group": "Gruppe",
+    "Sgbd_Variant_Desc": "Ein bestimmtes Steuergerät. Die Jobs lassen sich meist ohne Fahrzeug ansehen.",
+    "Sgbd_Group_Desc": "Eine Steuergerätefamilie. Beim Öffnen wird das Fahrzeug nach der verbauten Variante gefragt, es wird also ein Fahrzeug benötigt — danach steht die volle Jobliste dieser Variante bereit.",
     "Browser_NoResultsYet": "Noch nicht ausgeführt. Ergebnisse erscheinen hier und werden je Job behalten.",
     "Browser_NoDescription": "Diese Steuergerätebeschreibung enthält keine Beschreibung für den Job.",
 

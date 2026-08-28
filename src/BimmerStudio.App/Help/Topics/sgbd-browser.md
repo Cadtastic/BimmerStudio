@@ -9,20 +9,35 @@ keywords: SGBD, job, Tool32, prg, grp, group file, variant, run, results, browse
 The equivalent of Tool32: load an ECU description file, look at the jobs it
 offers, run one, read the results.
 
-## Loading a description file
+## Variants and group files
 
-Two kinds of file appear in the list:
+Selecting an ECU loads it immediately. Two kinds of file appear in the list, each
+tagged in the picker.
 
-- **Variants** (`.prg`) — one specific ECU, for example `CAS` or `MSV70`. Most can
-  be opened with no car attached, so you can browse jobs offline.
-- **Group files** (`.grp`, named `d_*`) — a family, for example `d_motor`. Opening
-  one asks the vehicle which variant is actually fitted, so it needs a live
-  connection. The resolved variant is shown once it succeeds.
+**Variants** (`.prg`, tagged *Variant*) describe one specific ECU — `CAS`,
+`MSV70`, `MSD80`. This is where the jobs live. A typical E-series installation has
+a few hundred of them, and most can be opened with no car attached, so you can
+read an ECU's job list offline.
 
-Some variants also require a connection. Engine and transmission files in
-particular (MSV70, MSD80, GS19, the DDE family) run an initialisation job that
-talks to the ECU before anything else can happen. When that is the case the app
-says so rather than reporting an error — it is normal, not a fault.
+**Group files** (`.grp`, named `d_*`, tagged *Group*) describe a *family* —
+`d_motor` for the engine, `d_kombi` for the instrument cluster. A group file is a
+dispatcher, not a lesser ECU: it contains the logic to ask the car which variant
+is actually fitted, and once it knows, the session behaves exactly as if you had
+loaded that variant directly. The variant it resolved is shown under the job list.
+
+That makes groups the entry point you usually want with a car connected, because
+you rarely know in advance whether a given 3-series has an MSV70 or an MSD80 —
+`d_motor` finds out for you. It is also why they are not filtered out of the list.
+
+The trade-off is that a group cannot be inspected offline: identifying the ECU
+means talking to it. Of the 80 group files in a typical installation, only a
+handful — the stripped-down "virtual ECU" ones — open without a car, and they
+expose just a generic set (`IDENT`, `INFO`, `INITIALISIERUNG`).
+
+Some variants need a connection too. Engine and transmission files in particular
+(MSV70, MSD80, GS19, the DDE family) run an initialisation job that talks to the
+ECU before anything else can happen. In both cases the app says a vehicle is
+needed rather than reporting an error — it is normal, not a fault.
 
 ## The job list
 

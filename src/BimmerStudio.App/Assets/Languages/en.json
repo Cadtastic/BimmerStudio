@@ -35,6 +35,12 @@
     "Browser_RunCountFormat": "{0} run(s)",
     "Browser_OriginalText": "Original text from the ECU description file",
     "Browser_ClearResults": "Clear",
+    "Browser_SelectEcuPrompt": "Choose an ECU above to see the jobs it offers.",
+
+    "Sgbd_Variant": "Variant",
+    "Sgbd_Group": "Group",
+    "Sgbd_Variant_Desc": "One specific ECU. Its jobs can usually be browsed with no vehicle connected.",
+    "Sgbd_Group_Desc": "A family of ECUs. Opening it asks the vehicle which variant is fitted, so it needs a car connected — and then offers that variant's full job list.",
     "Browser_NoResultsYet": "Not run yet. Results appear here and are kept per job.",
     "Browser_NoDescription": "This ECU description file documents no description for the job.",
 

@@ -53,17 +53,23 @@ public sealed class Localizer(ILanguagePackProvider packProvider) : ILocalizer
     public string Format(string key, params object?[] args) =>
         string.Format(CultureInfo.InvariantCulture, this[key], args);
 
+    /// <summary>
+    /// Normalises only to look the phrase up. Text with no translation comes back as it was
+    /// written, apart from trimming: SGBD comments use tabs and runs of spaces to lay out
+    /// labelled fields, and collapsing that whitespace turns a small table into a wall of prose.
+    /// </summary>
     public string TranslateData(string? source)
     {
-        var normalised = TextNormaliser.NormaliseWhitespace(source);
-        if (normalised.Length == 0)
+        if (string.IsNullOrWhiteSpace(source))
         {
             return string.Empty;
         }
 
+        var normalised = TextNormaliser.NormaliseWhitespace(source);
+
         return _active.DataPhrases.TryGetValue(normalised, out var translated)
             ? translated
-            : normalised;
+            : source.Trim();
     }
 
     public bool HasDataTranslation(string? source)

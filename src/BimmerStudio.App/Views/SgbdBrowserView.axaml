@@ -15,22 +15,41 @@
       <Setter Property="FontSize" Value="12" />
       <Setter Property="Opacity" Value="0.8" />
     </Style>
+    <Style Selector="Border.kindBadge">
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Padding" Value="5,1" />
+      <Setter Property="Opacity" Value="0.85" />
+    </Style>
   </UserControl.Styles>
 
   <Grid RowDefinitions="Auto,*">
 
-    <!-- ECU selection -->
+    <!-- ECU selection. Choosing loads immediately: reading a description file cannot change
+         the vehicle, so there is nothing to confirm with a second button. -->
     <Border Grid.Row="0" Padding="12" BorderThickness="0,0,0,1" BorderBrush="#2A2A2A">
       <DockPanel>
-        <Button DockPanel.Dock="Right" Content="{loc:T Browser_Load}" Margin="8,0,0,0" Classes="accent"
-                Command="{Binding LoadSgbdCommand}" />
+        <ProgressBar DockPanel.Dock="Right" Width="90" Margin="8,0,0,0" IsIndeterminate="True"
+                     VerticalAlignment="Center" IsVisible="{Binding IsBusy}" />
         <TextBlock DockPanel.Dock="Left" Text="{loc:T Browser_Ecu}" VerticalAlignment="Center"
                    Margin="0,0,8,0" Opacity="0.7" />
         <ComboBox ItemsSource="{Binding AvailableSgbds}"
                   SelectedItem="{Binding SelectedSgbd}"
                   HorizontalAlignment="Stretch"
                   MaxDropDownHeight="420"
-                  help:Help.TopicId="sgbd-browser" />
+                  help:Help.TopicId="sgbd-browser/ecu">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:SgbdListItemViewModel">
+              <DockPanel MinWidth="260" ToolTip.Tip="{Binding KindDescription}">
+                <Border DockPanel.Dock="Right" Classes="kindBadge"
+                        Background="{Binding KindBrush}">
+                  <TextBlock Text="{Binding KindLabel}" FontSize="10" Foreground="Black" />
+                </Border>
+                <TextBlock Text="{Binding DisplayName}" Classes="mono" FontSize="12"
+                           VerticalAlignment="Center" Margin="0,0,10,0" />
+              </DockPanel>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
       </DockPanel>
     </Border>
 
@@ -43,13 +62,14 @@
         <TextBlock DockPanel.Dock="Bottom" Margin="0,8,0,0" FontSize="11" Opacity="0.6"
                    Text="{Binding VariantLabel}"
                    IsVisible="{Binding VariantLabel, Converter={x:Static ObjectConverters.IsNotNull}}" />
-        <ListBox ItemsSource="{Binding Jobs}" SelectedItem="{Binding SelectedJob}">
+        <ListBox ItemsSource="{Binding Jobs}" SelectedItem="{Binding SelectedJob}"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:JobListItemViewModel">
               <StackPanel Spacing="2" Margin="0,2">
                 <DockPanel>
-                  <Border DockPanel.Dock="Right" CornerRadius="3" Padding="5,1"
-                          Background="{Binding SafetyBrush}" Opacity="0.85"
+                  <Border DockPanel.Dock="Right" Classes="kindBadge"
+                          Background="{Binding SafetyBrush}"
                           ToolTip.Tip="{Binding SafetyDescription}">
                     <TextBlock Text="{Binding SafetyLabel}" FontSize="10" Foreground="Black" />
                   </Border>
@@ -69,13 +89,20 @@
 
       <GridSplitter Grid.Column="1" Background="#2A2A2A" />
 
-      <!-- Execution and results -->
-      <DockPanel Grid.Column="2" Margin="12">
+      <!-- Execution and results. One scroll viewer over the whole pane so a narrow window
+           scrolls both ways rather than clipping the byte-layout tables. -->
+      <ScrollViewer Grid.Column="2" Margin="12"
+                    HorizontalScrollBarVisibility="Auto"
+                    VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="8" MinWidth="520">
 
-        <StackPanel DockPanel.Dock="Top" Spacing="8" help:Help.TopicId="sgbd-browser">
+          <TextBlock Text="{loc:T Browser_SelectEcuPrompt}" FontSize="12" Opacity="0.5"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding SelectedJob, Converter={x:Static ObjectConverters.IsNull}}" />
 
           <!-- Job identity: the protocol name, then what the ECU file says it does. -->
-          <StackPanel Spacing="2">
+          <StackPanel Spacing="2" help:Help.TopicId="sgbd-browser"
+                      IsVisible="{Binding SelectedJob, Converter={x:Static ObjectConverters.IsNotNull}}">
             <TextBlock Text="{Binding SelectedJob.Name}" FontSize="18" FontWeight="SemiBold"
                        Classes="mono" />
             <TextBlock Text="{Binding SelectedJob.FullDescription}" FontSize="12" Opacity="0.75"
@@ -88,6 +115,7 @@
           </StackPanel>
 
           <TextBox Watermark="{loc:T Browser_ArgumentsWatermark}" Text="{Binding Arguments}"
+                   IsVisible="{Binding SelectedJob, Converter={x:Static ObjectConverters.IsNotNull}}"
                    help:Help.TopicId="sgbd-browser/arguments" />
 
           <!-- What the selected job accepts, straight from the SGBD's own declaration. -->
@@ -112,12 +140,15 @@
                             IsVisible="{Binding SelectedJob.HasArguments, FallbackValue=False}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:JobParameterViewModel">
-                    <Grid ColumnDefinitions="170,90,*" Margin="0,2">
+                    <Grid ColumnDefinitions="170,90,*" Margin="0,3">
                       <TextBlock Grid.Column="0" Text="{Binding Name}" Classes="mono" FontSize="12"
-                                 TextTrimming="CharacterEllipsis" />
-                      <TextBlock Grid.Column="1" Text="{Binding Type}" FontSize="11" Opacity="0.6" />
+                                 TextTrimming="CharacterEllipsis" VerticalAlignment="Top" />
+                      <TextBlock Grid.Column="1" Text="{Binding Type}" FontSize="11" Opacity="0.6"
+                                 VerticalAlignment="Top" />
+                      <!-- One documented line per display line: the byte-layout descriptions are
+                           tables in the source and must not be flattened into prose. -->
                       <TextBlock Grid.Column="2" Text="{Binding Comment}" FontSize="12" Opacity="0.85"
-                                 TextWrapping="Wrap"
+                                 TextWrapping="Wrap" LineHeight="17"
                                  ToolTip.Tip="{Binding OriginalComment}" />
                     </Grid>
                   </DataTemplate>
@@ -134,12 +165,13 @@
               <ItemsControl ItemsSource="{Binding SelectedJob.DocumentedResults, FallbackValue={x:Null}}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:JobParameterViewModel">
-                    <Grid ColumnDefinitions="220,90,*" Margin="0,2">
+                    <Grid ColumnDefinitions="220,90,*" Margin="0,3">
                       <TextBlock Grid.Column="0" Text="{Binding Name}" Classes="mono" FontSize="12"
-                                 TextTrimming="CharacterEllipsis" />
-                      <TextBlock Grid.Column="1" Text="{Binding Type}" FontSize="11" Opacity="0.6" />
+                                 TextTrimming="CharacterEllipsis" VerticalAlignment="Top" />
+                      <TextBlock Grid.Column="1" Text="{Binding Type}" FontSize="11" Opacity="0.6"
+                                 VerticalAlignment="Top" />
                       <TextBlock Grid.Column="2" Text="{Binding Comment}" FontSize="12" Opacity="0.85"
-                                 TextWrapping="Wrap"
+                                 TextWrapping="Wrap" LineHeight="17"
                                  ToolTip.Tip="{Binding OriginalComment}" />
                     </Grid>
                   </DataTemplate>
@@ -155,7 +187,8 @@
                        Foreground="#F0A0A0" FontSize="12" />
           </Border>
 
-          <StackPanel Orientation="Horizontal" Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="8"
+                      IsVisible="{Binding SelectedJob, Converter={x:Static ObjectConverters.IsNotNull}}">
             <Button Content="{loc:T Browser_RunOnce}" Classes="accent" Command="{Binding RunOnceCommand}" />
             <Button Content="{loc:T Browser_RunContinuously}" Command="{Binding RunContinuousCommand}"
                     IsVisible="{Binding !IsStreaming}" />
@@ -168,49 +201,46 @@
             <TextBlock VerticalAlignment="Center" Opacity="0.6" FontSize="12"
                        Text="{Binding SelectedJob.LastDuration}" />
           </StackPanel>
+
+          <TextBlock Text="{loc:T Browser_NoResultsYet}" FontSize="12" Opacity="0.45"
+                     TextWrapping="Wrap" Margin="0,4"
+                     IsVisible="{Binding !SelectedJob.HasRun, FallbackValue=False}" />
+
+          <!-- Results of the selected job, bound through the selection so switching jobs shows
+               that job's own output instead of leaving the previous job's on screen. -->
+          <ItemsControl ItemsSource="{Binding SelectedJob.Results, FallbackValue={x:Null}}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ResultSetViewModel">
+                <Border Background="#161616" CornerRadius="4" Padding="10" Margin="0,0,0,8">
+                  <StackPanel>
+                    <TextBlock Text="{Binding Title}" Classes="panelHeading" Margin="0,0,0,6" />
+                    <ItemsControl ItemsSource="{Binding Rows}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ResultRowViewModel">
+                          <Grid ColumnDefinitions="200,220,*" Margin="0,1">
+                            <TextBlock Grid.Column="0" Text="{Binding Name}" Classes="mono"
+                                       FontSize="12" Opacity="0.75"
+                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Top" />
+                            <!-- System results are a fixed set the interpreter produces for
+                                 every job, so each carries a localised explanation. -->
+                            <TextBlock Grid.Column="1" Text="{Binding Description}" FontSize="11"
+                                       Opacity="0.6" TextWrapping="Wrap" Margin="0,0,12,0"
+                                       VerticalAlignment="Top"
+                                       IsVisible="{Binding HasDescription}" />
+                            <SelectableTextBlock Grid.Column="2" Text="{Binding Value}" FontSize="12"
+                                                 TextWrapping="Wrap"
+                                                 FontFamily="Consolas,Menlo,monospace" />
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
         </StackPanel>
-
-        <!-- Results of the selected job. Bound through the selection, so switching jobs shows
-             that job's own output instead of leaving the previous job's on screen. -->
-        <ScrollViewer Margin="0,12,0,0">
-          <StackPanel>
-            <TextBlock Text="{loc:T Browser_NoResultsYet}" FontSize="12" Opacity="0.45"
-                       TextWrapping="Wrap" Margin="0,4"
-                       IsVisible="{Binding !SelectedJob.HasRun, FallbackValue=False}" />
-
-            <ItemsControl ItemsSource="{Binding SelectedJob.Results, FallbackValue={x:Null}}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:ResultSetViewModel">
-                  <Border Background="#161616" CornerRadius="4" Padding="10" Margin="0,0,0,8">
-                    <StackPanel>
-                      <TextBlock Text="{Binding Title}" Classes="panelHeading" Margin="0,0,0,6" />
-                      <ItemsControl ItemsSource="{Binding Rows}">
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate x:DataType="vm:ResultRowViewModel">
-                            <Grid ColumnDefinitions="200,220,*" Margin="0,1">
-                              <TextBlock Grid.Column="0" Text="{Binding Name}" Classes="mono"
-                                         FontSize="12" Opacity="0.75"
-                                         TextTrimming="CharacterEllipsis" />
-                              <!-- System results are a fixed set the interpreter produces for
-                                   every job, so each carries a localised explanation. -->
-                              <TextBlock Grid.Column="1" Text="{Binding Description}" FontSize="11"
-                                         Opacity="0.6" TextWrapping="Wrap" Margin="0,0,12,0"
-                                         IsVisible="{Binding HasDescription}" />
-                              <SelectableTextBlock Grid.Column="2" Text="{Binding Value}" FontSize="12"
-                                                   TextWrapping="Wrap"
-                                                   FontFamily="Consolas,Menlo,monospace" />
-                            </Grid>
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
-                    </StackPanel>
-                  </Border>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
-        </ScrollViewer>
-      </DockPanel>
+      </ScrollViewer>
     </Grid>
   </Grid>
 </UserControl>
