@@ -30,9 +30,15 @@ you rarely know in advance whether a given 3-series has an MSV70 or an MSD80 —
 `d_motor` finds out for you. It is also why they are not filtered out of the list.
 
 The trade-off is that a group cannot be inspected offline: identifying the ECU
-means talking to it. Of the 80 group files in a typical installation, only a
-handful — the stripped-down "virtual ECU" ones — open without a car, and they
-expose just a generic set (`IDENT`, `INFO`, `INITIALISIERUNG`).
+means talking to it. **On a simulation connection, group files are therefore shown
+greyed out**, marked "needs a vehicle", rather than offered and then failing.
+Connect through a K+DCAN cable, ENET or an ELM327 adapter and they become
+available.
+
+Of the 80 group files in a typical installation, about six — the stripped-down
+"virtual ECU" ones — would technically open without a car, but they expose only a
+generic set (`IDENT`, `INFO`, `INITIALISIERUNG`) that any variant offers anyway,
+so they are greyed out with the rest rather than singled out by name.
 
 Some variants need a connection too. Engine and transmission files in particular
 (MSV70, MSD80, GS19, the DDE family) run an initialisation job that talks to the

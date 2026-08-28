@@ -37,13 +37,30 @@
                   HorizontalAlignment="Stretch"
                   MaxDropDownHeight="420"
                   help:Help.TopicId="sgbd-browser/ecu">
+          <ComboBox.Styles>
+            <!-- Group files need a car to identify the fitted ECU, so they are not offered
+                 over a simulation. ToolTip is set here as well as on the row because a
+                 disabled container does not reliably raise pointer events for its children. -->
+            <Style Selector="ComboBoxItem" x:DataType="vm:SgbdListItemViewModel">
+              <Setter Property="IsEnabled" Value="{Binding IsSelectable}" />
+              <Setter Property="ToolTip.Tip" Value="{Binding Tooltip}" />
+              <Setter Property="ToolTip.ShowDelay" Value="300" />
+            </Style>
+          </ComboBox.Styles>
           <ComboBox.ItemTemplate>
             <DataTemplate x:DataType="vm:SgbdListItemViewModel">
-              <DockPanel MinWidth="260" ToolTip.Tip="{Binding KindDescription}">
+              <DockPanel MinWidth="300" ToolTip.Tip="{Binding Tooltip}">
                 <Border DockPanel.Dock="Right" Classes="kindBadge"
                         Background="{Binding KindBrush}">
                   <TextBlock Text="{Binding KindLabel}" FontSize="10" Foreground="Black" />
                 </Border>
+                <!-- Stated in the row itself: a tooltip alone would leave the reason
+                     undiscoverable on a disabled item. -->
+                <TextBlock DockPanel.Dock="Right" Text="{Binding UnavailableNote}"
+                           FontSize="10" Opacity="0.7" FontStyle="Italic"
+                           VerticalAlignment="Center" Margin="0,0,8,0"
+                           IsVisible="{Binding UnavailableNote,
+                                       Converter={x:Static ObjectConverters.IsNotNull}}" />
                 <TextBlock Text="{Binding DisplayName}" Classes="mono" FontSize="12"
                            VerticalAlignment="Center" Margin="0,0,10,0" />
               </DockPanel>

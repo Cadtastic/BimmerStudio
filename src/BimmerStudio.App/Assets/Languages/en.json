@@ -41,6 +41,8 @@
     "Sgbd_Group": "Group",
     "Sgbd_Variant_Desc": "One specific ECU. Its jobs can usually be browsed with no vehicle connected.",
     "Sgbd_Group_Desc": "A family of ECUs. Opening it asks the vehicle which variant is fitted, so it needs a car connected — and then offers that variant's full job list.",
+    "Sgbd_NeedsVehicle_Short": "needs a vehicle",
+    "Sgbd_NeedsVehicle_Desc": "Group files identify the fitted ECU by asking the vehicle, so they cannot be opened over a simulation. Connect through a K+DCAN cable, ENET or an ELM327 adapter to use this.",
     "Browser_NoResultsYet": "Not run yet. Results appear here and are kept per job.",
     "Browser_NoDescription": "This ECU description file documents no description for the job.",
 

@@ -29,6 +29,8 @@ public sealed class JobParameterFormattingTests
                 ["Sgbd_Group"] = "Group",
                 ["Sgbd_Variant_Desc"] = "One specific ECU.",
                 ["Sgbd_Group_Desc"] = "A family of ECUs.",
+                ["Sgbd_NeedsVehicle_Short"] = "needs a vehicle",
+                ["Sgbd_NeedsVehicle_Desc"] = "Group files identify the fitted ECU by asking the vehicle.",
             },
             new Dictionary<string, string>
             {
@@ -109,11 +111,45 @@ public sealed class JobParameterFormattingTests
         string expectedLabel)
     {
         var localizer = await LocalizerAsync();
-        var item = new SgbdListItemViewModel(fileName, localizer);
+        var item = new SgbdListItemViewModel(fileName, localizer, canReachVehicle: true);
 
         item.IsGroup.ShouldBe(expectedGroup);
         item.KindLabel.ShouldBe(expectedLabel);
         item.DisplayName.ShouldBe(Path.GetFileNameWithoutExtension(fileName));
         item.Identifier.Kind.ShouldBe(expectedGroup ? SgbdKind.Group : SgbdKind.Variant);
+    }
+
+    [Fact]
+    public async Task Group_files_are_unselectable_without_a_vehicle_and_say_why()
+    {
+        var localizer = await LocalizerAsync();
+        var group = new SgbdListItemViewModel("d_motor.grp", localizer, canReachVehicle: false);
+
+        group.IsSelectable.ShouldBeFalse();
+        group.UnavailableNote.ShouldBe("needs a vehicle");
+        group.Tooltip.ShouldBe("Group files identify the fitted ECU by asking the vehicle.");
+    }
+
+    [Fact]
+    public async Task Variants_stay_selectable_without_a_vehicle()
+    {
+        var localizer = await LocalizerAsync();
+        var variant = new SgbdListItemViewModel("CAS.PRG", localizer, canReachVehicle: false);
+
+        // Most variants can be browsed offline; only group files need the car.
+        variant.IsSelectable.ShouldBeTrue();
+        variant.UnavailableNote.ShouldBeNull();
+        variant.Tooltip.ShouldBe("One specific ECU.");
+    }
+
+    [Fact]
+    public async Task Group_files_become_selectable_once_a_vehicle_can_answer()
+    {
+        var localizer = await LocalizerAsync();
+        var group = new SgbdListItemViewModel("d_motor.grp", localizer, canReachVehicle: true);
+
+        group.IsSelectable.ShouldBeTrue();
+        group.UnavailableNote.ShouldBeNull();
+        group.Tooltip.ShouldBe("A family of ECUs.");
     }
 }

@@ -22,6 +22,7 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
     private CancellationTokenSource? _continuousCancellation;
     private CancellationTokenSource? _prefetchCancellation;
     private Task _loadTask = Task.CompletedTask;
+    private bool _canReachVehicle;
 
     public SgbdBrowserViewModel(JobSafetyClassifier classifier, ILocalizer localizer)
     {
@@ -117,6 +118,10 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
     {
         _connection = connection;
         AllowWrites = allowWrites;
+
+        // A simulation replays recorded traffic; there is no ECU to answer an identification
+        // request, which is precisely what a group file needs.
+        _canReachVehicle = connection.Profile.IsHardware;
         Reset();
     }
 
@@ -125,7 +130,7 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
         AvailableSgbds.Clear();
         foreach (var name in names)
         {
-            AvailableSgbds.Add(new SgbdListItemViewModel(name, _localizer));
+            AvailableSgbds.Add(new SgbdListItemViewModel(name, _localizer, _canReachVehicle));
         }
     }
 
@@ -136,9 +141,15 @@ public sealed partial class SgbdBrowserViewModel : ViewModelBase
     /// </summary>
     partial void OnSelectedSgbdChanged(SgbdListItemViewModel? value)
     {
-        if (value is not null)
+        // Disabled rows are unreachable by pointer, but keyboard navigation can still land on
+        // one; refusing here keeps the guarantee in the view model rather than only in the view.
+        if (value is { IsSelectable: true })
         {
             _loadTask = LoadSgbdAsync(value, CancellationToken.None);
+        }
+        else if (value is not null)
+        {
+            StatusMessage = value.Tooltip;
         }
     }
 

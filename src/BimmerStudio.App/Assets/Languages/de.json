@@ -41,6 +41,8 @@
     "Sgbd_Group": "Gruppe",
     "Sgbd_Variant_Desc": "Ein bestimmtes Steuergerät. Die Jobs lassen sich meist ohne Fahrzeug ansehen.",
     "Sgbd_Group_Desc": "Eine Steuergerätefamilie. Beim Öffnen wird das Fahrzeug nach der verbauten Variante gefragt, es wird also ein Fahrzeug benötigt — danach steht die volle Jobliste dieser Variante bereit.",
+    "Sgbd_NeedsVehicle_Short": "benötigt ein Fahrzeug",
+    "Sgbd_NeedsVehicle_Desc": "Gruppendateien ermitteln das verbaute Steuergerät durch eine Abfrage am Fahrzeug und lassen sich daher nicht über eine Simulation öffnen. Dazu über K+DCAN-Kabel, ENET oder einen ELM327-Adapter verbinden.",
     "Browser_NoResultsYet": "Noch nicht ausgeführt. Ergebnisse erscheinen hier und werden je Job behalten.",
     "Browser_NoDescription": "Diese Steuergerätebeschreibung enthält keine Beschreibung für den Job.",
 
