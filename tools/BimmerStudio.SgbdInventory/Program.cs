@@ -1,4 +1,5 @@
 using System.Text.Json;
+using BimmerStudio.SgbdInventory;
 using BimmerStudio.Application.Abstractions;
 using BimmerStudio.Domain.Connections;
 using BimmerStudio.Domain.Diagnostics;
@@ -199,15 +200,15 @@ static async Task WritePhraseInventoryAsync(
         ? all
         : all.Where(entry => !alreadyTranslated.Contains(entry.Key)).ToList();
 
-    var lines = ordered.Select(entry => $"{entry.Value}\t{entry.Key}");
+    // Classified so the file names what each remaining line actually is, not just that the
+    // dictionary lacks it.
+    var lines = ordered.Select(entry =>
+        $"{entry.Value}\t{PhraseClassifier.Classify(entry.Key, isTranslated: false)}\t{entry.Key}");
     await File.WriteAllLinesAsync(path, lines);
 
     if (alreadyTranslated is not null)
     {
-        var translated = total - ordered.Sum(entry => (long)entry.Value);
-        Console.WriteLine(
-            $"\nCoverage: {translated * 100.0 / total:F1}% of {total} occurrences already translated");
-        Console.WriteLine($"Untranslated: {ordered.Count} distinct lines -> {path}");
+        ReportCoverage(all, alreadyTranslated, total, path, ordered.Count);
     }
     else
     {
@@ -227,6 +228,63 @@ static async Task WritePhraseInventoryAsync(
         Console.WriteLine($"  next {top,5}: {covered * 100.0 / remaining:F1}% of what remains"
             + $" ({covered * 100.0 / total:F1}% of everything)");
     }
+}
+
+/// <summary>
+/// Reports what a reader can actually read.
+/// </summary>
+/// <remarks>
+/// "Percent translated" understates this corpus badly. Around half of any untranslated remainder
+/// is protocol service names, EDIABAS table references and job-name tokens, which must render
+/// verbatim, and much of the rest was written in English by BMW. Those are not gaps, so the
+/// headline figure here is readable coverage: everything except German that still lacks a
+/// translation.
+/// </remarks>
+static void ReportCoverage(
+    List<KeyValuePair<string, int>> all,
+    HashSet<string> alreadyTranslated,
+    long total,
+    string path,
+    int untranslatedLines)
+{
+    var lineCounts = new Dictionary<PhraseClass, int>();
+    var occurrences = new Dictionary<PhraseClass, long>();
+
+    foreach (var (phrase, count) in all)
+    {
+        var phraseClass = PhraseClassifier.Classify(phrase, alreadyTranslated.Contains(phrase));
+        lineCounts[phraseClass] = lineCounts.GetValueOrDefault(phraseClass) + 1;
+        occurrences[phraseClass] = occurrences.GetValueOrDefault(phraseClass) + count;
+    }
+
+    long Occ(PhraseClass phraseClass) => occurrences.GetValueOrDefault(phraseClass);
+    int Lines(PhraseClass phraseClass) => lineCounts.GetValueOrDefault(phraseClass);
+
+    var readable = total - Occ(PhraseClass.UntranslatedGerman);
+
+    Console.WriteLine();
+    Console.WriteLine($"Readable coverage: {readable * 100.0 / total:F2}% of {total:N0} occurrences");
+    Console.WriteLine("  the dictionary translates it, or it never needed translating");
+    Console.WriteLine();
+
+    foreach (var phraseClass in new[]
+             {
+                 PhraseClass.Translated,
+                 PhraseClass.ProtocolOrTable,
+                 PhraseClass.Identifier,
+                 PhraseClass.AlreadyEnglish,
+                 PhraseClass.UntranslatedGerman,
+             })
+    {
+        Console.WriteLine($"  {phraseClass,-20} {Lines(phraseClass),6:N0} lines  {Occ(phraseClass),8:N0} occ"
+            + $"  {Occ(phraseClass) * 100.0 / total,6:F2}%");
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"Real gap: {Lines(PhraseClass.UntranslatedGerman):N0} German lines "
+        + $"({Occ(PhraseClass.UntranslatedGerman):N0} occurrences)");
+    Console.WriteLine($"Wrote {untranslatedLines:N0} untranslated lines (count, class, phrase) -> {path}");
+    Console.WriteLine("Note: the class split is a heuristic, reliable in aggregate but not per line.");
 }
 
 static ParameterReport ToParameter(JobParameterInfo info) =>
