@@ -47,7 +47,7 @@ module, job list with safety badges, argument and result documentation, run once
 per-job results.
 
 **Localisation.** English and German packs; a new language is one JSON file dropped into
-`languages/`. UI strings, help topics, composed job help and a 535-entry dictionary for the
+`languages/`. UI strings, help topics, composed job help and a 5,730-entry dictionary for the
 German text inside SGBDs all follow the selection. Job and result *names* never translate.
 
 **Help.** F1 is context-sensitive via a `Help.TopicId` attached property; job help is composed
@@ -59,7 +59,8 @@ Run the inventory tool with `--missing <pack>` for a coverage report, adding
 `--job-comments` to restrict it to the text under each job name:
 
 ```
-dotnet run --project tools/BimmerStudio.SgbdInventory -- <EcuPath>   --phrases out.tsv --missing src/BimmerStudio.App/Assets/Languages/en.json --job-comments
+dotnet run --project tools/BimmerStudio.SgbdInventory -- <EcuPath> \
+  --phrases out.tsv --missing src/BimmerStudio.App/Assets/Languages/en.json --job-comments
 ```
 
 **Read "readable coverage", not "percent translated."** Roughly half of any
