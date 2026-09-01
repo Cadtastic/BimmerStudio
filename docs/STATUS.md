@@ -1,6 +1,6 @@
 # Status — end of session 1
 
-Written at commit `6802cde` on `main`. Everything below is verified against the real
+Written at commit `a805ebf` on `main`. Everything below is verified against the real
 SP-Daten installation at `BMW Exx CODING\3-UPDATE\EDIABAS\Ecu` (279 `.prg`, 80 `.grp`).
 
 ## Where things stand
@@ -19,6 +19,7 @@ session's work.
 | Interpreter fork | https://github.com/Cadtastic/ediabaslib — `master`, pinned at `3f12a815b` |
 | Size | 88 source files / ~5,200 lines, 13 test files / ~1,450 lines |
 | Tests | **146 passing** (59 domain, 65 application, 22 integration) |
+| Localisation | **5,730 phrase translations**; job descriptions 99.95% readable, all comment text 95.58% |
 | Build | `dotnet build BimmerStudio.slnx`, .NET 10, Avalonia 11.3.20 |
 
 Integration tests read a real `Ecu` folder via `BIMMERSTUDIO_ECU_PATH` and skip themselves
@@ -51,6 +52,39 @@ German text inside SGBDs all follow the selection. Job and result *names* never 
 
 **Help.** F1 is context-sensitive via a `Help.TopicId` attached property; job help is composed
 at request time from that ECU's own documentation plus its safety verdict.
+
+## Translation coverage, and how to measure it
+
+Run the inventory tool with `--missing <pack>` for a coverage report, adding
+`--job-comments` to restrict it to the text under each job name:
+
+```
+dotnet run --project tools/BimmerStudio.SgbdInventory -- <EcuPath>   --phrases out.tsv --missing src/BimmerStudio.App/Assets/Languages/en.json --job-comments
+```
+
+**Read "readable coverage", not "percent translated."** Roughly half of any
+untranslated remainder is protocol service names, EDIABAS table references and job-name
+tokens that must render verbatim in every language, and much of the rest was written in
+English by BMW. Counting those as gaps once made a finished job list look 55% done.
+
+| | Job descriptions | All comment text |
+|---|---|---|
+| Readable | **99.95%** | **95.58%** |
+| Real German gap | 17 lines / 32 occ | 6,474 lines / 12,278 occ |
+
+Job descriptions are done: the 17 remaining lines are truncated fragments where the
+governing verb sits on an adjacent line, and any translation would be invention. The
+4.42% gap in the wider set is entirely in **argument and result documentation** — the
+byte-layout tables and value-range notes — which is where further effort would go.
+The classifier behind these numbers is a heuristic and says so in its output: trust the
+shape of the table, not an individual row.
+
+To continue: filter the emitted TSV to the `UntranslatedGerman` class, split it into
+chunks of ~500, and hand each to an agent with the brief used before (skip protocol
+identifiers, table references, hex and English; keep `$xx` prefixes and translate the
+German after them; skip anything ambiguous). Merge results with
+`scripts/Merge-PhraseTranslations.ps1`, never by hand — its header records four ways
+that merge has silently destroyed or discarded data.
 
 ## Facts worth not rediscovering
 
